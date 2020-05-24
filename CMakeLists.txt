@@ -203,3 +203,8 @@ include_directories(
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+## Declare node curvature
+add_executable(curvature_calc src/curvature_calc.cpp)
+add_dependencies(curvature_calc ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
+target_link_libraries(curvature_calc ${catkin_LIBRARIES})
