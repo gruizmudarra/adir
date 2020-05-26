@@ -1,15 +1,20 @@
-# Autonomous Driving in Intersections and Roundabouts. Conducción autónoma en intersecciones y rotondas.
+# Autonomous Driving in Intersections and Roundabouts.
 
-This is my end of studies project. It consists in a ROS package that needs information about:
+This is the code developed in my end of studies project. It consists in a ROS package that needs information about:
 
 - Odometry
 - Polinomial estimations of the lanes of the road
 
-Given this parameters, a node detects the environment the car
+Given this parameters, a node calculates the environment the car is in, for example:
+
+1. Straight road
+2. Curved road
+3. Crossing 
+4. Roundabout 
+
+Other node generates the action to move through the different situations. 
 
 ## Getting Started
-
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
 
 ### Prerequisites
 - Ubuntu 16.04
