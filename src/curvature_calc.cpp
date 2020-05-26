@@ -1,5 +1,5 @@
 /*
- Node: curvature
+ Node: curvature_calc
  Author: German Ruiz Mudarra, April 2020
 
  Description:
@@ -27,6 +27,8 @@ Publications:
 #include "std_msgs/Float32MultiArray.h"
 #include "std_msgs/Float32.h"
 
+#define PLOT_CURVATURE_DATA
+
 static const uint32_t MY_ROS_QUEUE_SIZE = 1;
 
 using namespace std;
@@ -36,10 +38,11 @@ void cb_coefCenter(const std_msgs::Float32MultiArray::ConstPtr& msg);
 void cb_coefRight(const std_msgs::Float32MultiArray::ConstPtr& msg);
 void cb_degrees(const std_msgs::Int32MultiArray::ConstPtr& msg);
 void curvature_calculation();
-/*
+
 ros::Publisher curvature_pub;
 std_msgs::Float32MultiArray sent_message;
-*/
+
+#ifdef PLOT_CURVATURE_DATA
 ros::Publisher left_pub;
 std_msgs::Float32 left_msg;
 
@@ -48,6 +51,7 @@ std_msgs::Float32 center_msg;
 
 ros::Publisher right_pub;
 std_msgs::Float32 right_msg;
+#endif
 
 struct polynomial_t {
     float a;
@@ -62,7 +66,7 @@ float LeftCurvature, CenterCurvature, RightCurvature;
 
  int main (int argc, char **argv) {
     
-    ros::init(argc, argv, "curvature");
+    ros::init(argc, argv, "curvature_calc");
 
 	ros::NodeHandle nh;
     // Subscribe to polynomials degree data
@@ -73,18 +77,32 @@ float LeftCurvature, CenterCurvature, RightCurvature;
     ros::Subscriber coefRight_sub = nh.subscribe("/lane_model/coef/Right", MY_ROS_QUEUE_SIZE, cb_coefRight);
     
     //Publications
+    
+    #ifdef PLOT_CURVATURE_DATA
     left_pub = nh.advertise<std_msgs::Float32>("/curvature_calc/left", MY_ROS_QUEUE_SIZE);
     center_pub = nh.advertise<std_msgs::Float32>("/curvature_calc/center", MY_ROS_QUEUE_SIZE);
     right_pub = nh.advertise<std_msgs::Float32>("/curvature_calc/right", MY_ROS_QUEUE_SIZE);
+    #endif
+    
+    curvature_pub = nh.advertise<std_msgs::Float32MultiArray>("/curvature_calc/all", MY_ROS_QUEUE_SIZE);
     
     while (ros::ok()) {
+        // Clear array publication
+        sent_message.data.clear();
+
         // Calculate curvature radius      
         curvature_calculation();
 
         // Publish data
+        
+        #ifdef PLOT_CURVATURE_DATA
         left_pub.publish(left_msg);
         center_pub.publish(center_msg);
         right_pub.publish(right_msg);
+        #endif
+        
+        curvature_pub.publish(sent_message);
+        
         ros::spinOnce();
         sleep(1);
     }
@@ -191,32 +209,51 @@ void curvature_calculation() {
     // Left Lane
     if(LeftLane.degree == 2) {
         LeftLane.curvature = 1/(2*LeftLane.a);
+        sent_message.data.push_back(LeftLane.curvature);
+        
+        #ifdef PLOT_CURVATURE_DATA
         left_msg.data = LeftLane.curvature;
+        #endif
     }
     else {
         //ROS_INFO("Couldn't calculate Left Lane curvature");
-        left_msg.data = 0;
+        sent_message.data.push_back(0);
+        #ifdef PLOT_CURVATURE_DATA
+            left_msg.data = 0;
+        #endif
     }
 
     // Center Lane
     if(CenterLane.degree == 2) {
         CenterLane.curvature = 1/(2*CenterLane.a);
-        center_msg.data = CenterLane.curvature;
+        sent_message.data.push_back(CenterLane.curvature);
+        #ifdef PLOT_CURVATURE_DATA
+            center_msg.data = CenterLane.curvature;
+        #endif
     }
     else {
         //ROS_INFO("Couldn't calculate Center Lane curvature");
-        center_msg.data = 0;
+        sent_message.data.push_back(0);
+        #ifdef PLOT_CURVATURE_DATA
+            center_msg.data = 0;
+        #endif
     }
 
     // Right Lane
     if(RightLane.degree == 2) {
         RightLane.curvature = 1/(2*RightLane.a);
-        right_msg.data = RightLane.curvature;
+        sent_message.data.push_back(RightLane.curvature);
+        #ifdef PLOT_CURVATURE_DATA
+            right_msg.data = RightLane.curvature;
+        #endif
     }
     
     else {
         //ROS_INFO("Couldn't calculate Center Lane curvature");
-        right_msg.data = 0;
+        sent_message.data.push_back(0);
+        #ifdef PLOT_CURVATURE_DATA
+            right_msg.data = 0;
+        #endif
     }
 
 }

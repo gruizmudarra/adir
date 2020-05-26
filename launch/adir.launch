@@ -1,0 +1,3 @@
+<launch>
+    <node pkg= "adir" type="curvature_calc" name="curvature_calc" />
+</launch>
