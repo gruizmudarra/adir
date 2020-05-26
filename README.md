@@ -13,8 +13,8 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites
 - Ubuntu 16.04
-- [ROS Kinetic] http://wiki.ros.org/kinetic/Installation/Ubuntu
-- [Seat Car Simulator] https://gitlab.iri.upc.edu/mobile_robotics/adc/seat_car_simulator by Instituto de Robótica e Informática Industrial CSIC-UPC
+- [ROS Kinetic](http://wiki.ros.org/kinetic/Installation/Ubuntu)
+- [Seat Car Simulator](https://gitlab.iri.upc.edu/mobile_robotics/adc/seat_car_simulator) by Instituto de Robótica e Informática Industrial CSIC-UPC
 
 ### Installing
 
