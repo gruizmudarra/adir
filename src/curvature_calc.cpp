@@ -27,7 +27,7 @@ Publications:
 #include "std_msgs/Float32MultiArray.h"
 #include "std_msgs/Float32.h"
 
-#define PLOT_CURVATURE_DATA
+// #define PLOT_CURVATURE_DATA
 
 static const uint32_t MY_ROS_QUEUE_SIZE = 1;
 
@@ -207,7 +207,7 @@ void curvature_calculation() {
     */
 
     // Left Lane
-    if(LeftLane.degree == 2) {
+    if(LeftLane.degree > 0) {
         LeftLane.curvature = 1/(2*LeftLane.a);
         sent_message.data.push_back(LeftLane.curvature);
         
@@ -222,9 +222,8 @@ void curvature_calculation() {
             left_msg.data = 0;
         #endif
     }
-
     // Center Lane
-    if(CenterLane.degree == 2) {
+    if(CenterLane.degree > 0) {
         CenterLane.curvature = 1/(2*CenterLane.a);
         sent_message.data.push_back(CenterLane.curvature);
         #ifdef PLOT_CURVATURE_DATA
@@ -232,30 +231,25 @@ void curvature_calculation() {
         #endif
     }
     else {
-        //ROS_INFO("Couldn't calculate Center Lane curvature");
         sent_message.data.push_back(0);
         #ifdef PLOT_CURVATURE_DATA
             center_msg.data = 0;
         #endif
     }
-
     // Right Lane
-    if(RightLane.degree == 2) {
+    if(RightLane.degree > 0) {
         RightLane.curvature = 1/(2*RightLane.a);
         sent_message.data.push_back(RightLane.curvature);
         #ifdef PLOT_CURVATURE_DATA
             right_msg.data = RightLane.curvature;
         #endif
     }
-    
     else {
-        //ROS_INFO("Couldn't calculate Center Lane curvature");
         sent_message.data.push_back(0);
         #ifdef PLOT_CURVATURE_DATA
             right_msg.data = 0;
         #endif
     }
-
 }
 
  

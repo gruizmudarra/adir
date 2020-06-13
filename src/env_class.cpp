@@ -17,13 +17,9 @@
 #include "std_msgs/Float32MultiArray.h"
 #include "nav_msgs/Odometry.h"
 #include "geometry_msgs/Pose2D.h"
+#include "std_msgs/String.h"
 
 static const uint32_t MY_ROS_QUEUE_SIZE = 1;
-
-void cb_curvData(const std_msgs::Float32MultiArray::ConstPtr& msg);
-void cb_odomData(const nav_msgs::Odometry::ConstPtr& msg);
-float get_distance(float x, float y);
-std::vector<position_t> define_intersetion_nodes();
 
 using namespace std;
 
@@ -42,8 +38,18 @@ struct position_t {
         : x(arg_x), y(arg_y) { }
 };
 
+void cb_curvData(const std_msgs::Float32MultiArray::ConstPtr& msg);
+void cb_odomData(const nav_msgs::Odometry::ConstPtr& msg);
+float get_distance(float x, float y);
+std::vector<position_t> define_intersection_nodes();
+void environment_classifier_curvature();
+
+
 curvature_t curvLane;
-position_t vehicle_pose; 
+position_t vehicle_pose(0,0); 
+
+ros::Publisher env_pub;
+std_msgs::String env_msg;
 
  int main (int argc, char **argv) {
     
@@ -53,9 +59,10 @@ position_t vehicle_pose;
 
     ros::Subscriber curv_sub = nh.subscribe("/curvature_calc/all", MY_ROS_QUEUE_SIZE, cb_curvData);
     ros::Subscriber odom_sub = nh.subscribe("/odom", MY_ROS_QUEUE_SIZE, cb_odomData);
-    
+    env_pub = nh.advertise<std_msgs::String>("/env_class", MY_ROS_QUEUE_SIZE);
     while (ros::ok()) {
-
+        environment_classifier_curvature();
+        env_pub.publish(env_msg);
         ros::spinOnce();
         sleep(1);
     }
@@ -84,7 +91,7 @@ position_t vehicle_pose;
  }
 
 // Define cartesian coordinates of the point to turn
-std::vector<position_t> define_intersetion_nodes(){
+std::vector<position_t> define_intersection_nodes(){
     // Cartesian coordinates matrix of each node
     std::vector<position_t> nodes_matrix;
     //Roundabout 
@@ -118,4 +125,28 @@ std::vector<position_t> define_intersetion_nodes(){
     nodes_matrix.push_back(position_t(-5.2837767601,-5.79377508163)); // 20
 
     return nodes_matrix;
+}
+
+void environment_classifier_curvature(){
+    string environment = "";
+    if (!curvLane.center && !curvLane.right){
+        environment = "CRUCE O INTERSECCION";
+    }
+    else if (abs(curvLane.center) < 300 || abs(curvLane.center) < 300) {
+        environment = "CURVA";
+        if(curvLane.center < 0 || curvLane.center < 0) {
+            environment = environment + " IZQUIERDA";
+        }
+        else if(curvLane.center > 0 || curvLane.center > 0) {
+            environment = environment + " DERECHA";
+        }
+    }
+    else if (abs(curvLane.center) > 300 || abs(curvLane.right) > 300) {
+        environment = "RECTA";
+    }
+    else
+    {
+        environment = "NO SE PUEDE DISCERNIR A PARTIR DE LA CURVATURA";
+    }
+    env_msg.data = environment;
 }
