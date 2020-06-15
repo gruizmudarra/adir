@@ -1,49 +1,6 @@
-/*
- Node: env_class (Environment Classifier)
- Author: German Ruiz Mudarra, May 2020
+#include "env_class.h"
 
- Description:
-    
- Subscriptions:
- /curvature_calc/all (Information about curvature of the lanes)
- /odom (Global position of the car (not ground-truth))
-
- Publications:
-
- */
-
-#include "ros/ros.h"
-#include "std_msgs/Float32.h"
-#include "std_msgs/Float32MultiArray.h"
-#include "nav_msgs/Odometry.h"
-#include "geometry_msgs/Pose2D.h"
-#include "std_msgs/String.h"
-
-static const uint32_t MY_ROS_QUEUE_SIZE = 1;
-
-using namespace std;
-
-struct curvature_t {
-    float left;
-    float center;
-    float right;
-};
-
-// Cartesian coordinates
-struct position_t {
-    double x;
-    double y;
-    // Constructor for easy mapping
-    position_t(double arg_x, double arg_y)
-        : x(arg_x), y(arg_y) { }
-};
-
-void cb_curvData(const std_msgs::Float32MultiArray::ConstPtr& msg);
-void cb_odomData(const nav_msgs::Odometry::ConstPtr& msg);
-float get_distance(float x, float y);
-std::vector<position_t> define_intersection_nodes();
-void environment_classifier_curvature();
-
+static const uint32_t MY_ROS_QUEUE_SIZE = 1000;
 
 curvature_t curvLane;
 position_t vehicle_pose(0,0); 
@@ -52,16 +9,23 @@ ros::Publisher env_pub;
 std_msgs::String env_msg;
 
  int main (int argc, char **argv) {
-    
+    // Node info
     ros::init(argc, argv, "env_class");
-
 	ros::NodeHandle nh;
-
-    ros::Subscriber curv_sub = nh.subscribe("/curvature_calc/all", MY_ROS_QUEUE_SIZE, cb_curvData);
+    
+    // Subcriptions
+    ros::Subscriber curv_sub = nh.subscribe("/curvature_calc/array", MY_ROS_QUEUE_SIZE, cb_curvData);
     ros::Subscriber odom_sub = nh.subscribe("/odom", MY_ROS_QUEUE_SIZE, cb_odomData);
+    
+    // Publications
     env_pub = nh.advertise<std_msgs::String>("/env_class", MY_ROS_QUEUE_SIZE);
+    
+    // Define topologic map
+    std::vector<position_t> topologic_map = define_intersection_nodes();
+
+    // Main loop
     while (ros::ok()) {
-        environment_classifier_curvature();
+        environment_classifier(topologic_map);
         env_pub.publish(env_msg);
         ros::spinOnce();
         sleep(1);
@@ -87,7 +51,7 @@ std_msgs::String env_msg;
  double get_distance(position_t p1, position_t p2) {
      double dif_x = p1.x - p2.x;
      double dif_y = p1.y - p2.y;
-     return sqrt(dif_x*dif_x)+(dif_y*dif_y);
+     return (dif_x*dif_x)+(dif_y*dif_y);
  }
 
 // Define cartesian coordinates of the point to turn
@@ -127,26 +91,102 @@ std::vector<position_t> define_intersection_nodes(){
     return nodes_matrix;
 }
 
-void environment_classifier_curvature(){
+void environment_classifier(std::vector<position_t> map) {
     string environment = "";
-    if (!curvLane.center && !curvLane.right){
-        environment = "CRUCE O INTERSECCION";
+    int node_id;
+    bool intersection;
+    if (!curvLane.center && !curvLane.right) {
+        intersection = check_position(map,node_id);
+        if (intersection) {
+            environment = intersection_class(node_id);
+        }
+        else {
+            environment = "LINE DETECTION FAILED";
+        }
     }
     else if (abs(curvLane.center) < 300 || abs(curvLane.center) < 300) {
-        environment = "CURVA";
-        if(curvLane.center < 0 || curvLane.center < 0) {
-            environment = environment + " IZQUIERDA";
+        environment = "CURVE";
+        if(curvLane.center < 0 || curvLane.right < 0) {
+            environment = "LEFT " + environment;
         }
-        else if(curvLane.center > 0 || curvLane.center > 0) {
-            environment = environment + " DERECHA";
+        else if(curvLane.center > 0 || curvLane.right > 0) {
+            environment = "RIGHT " + environment;
         }
     }
     else if (abs(curvLane.center) > 300 || abs(curvLane.right) > 300) {
-        environment = "RECTA";
+        environment = "STRAIGHT";
     }
     else
     {
-        environment = "NO SE PUEDE DISCERNIR A PARTIR DE LA CURVATURA";
+        environment = "UNCERTAIN";
     }
     env_msg.data = environment;
+}
+
+bool check_position(std::vector<position_t> map, int& node_id) {
+    position_t node(0,0);
+    double dist;
+    for(int i = 0; i < map.size(); i++) {
+        node = map[i];
+        dist = get_distance(vehicle_pose,node);
+        if (dist <= 0.5) {
+            node_id = i+1;
+            return true;
+        }
+    }
+    return false;
+}
+
+string intersection_class(int node_id) {
+    string s = "";
+    switch(node_id) {
+        case 1: s = "ROUNDABOUT ENTRY"; 
+                break;
+        case 2: s = "ROUNDABOUT ENTRY"; 
+                break;
+        case 3: s = "ROUNDABOUT ENTRY"; 
+                break;
+        case 4: s = "ROUNDABOUT ENTRY"; 
+                break;
+
+        case 5: s = "ROUNDABOUT EXIT"; 
+                    break;
+        case 6: s = "ROUNDABOUT EXIT"; 
+                break;
+        case 7: s = "ROUNDABOUT EXIT"; 
+                break;
+        case 8: s = "ROUNDABOUT EXIT"; 
+                break;
+
+        case 9: s = "CCROSSING ENTRY"; 
+                break;
+        case 10: s = "CCROSSING ENTRY"; 
+                break;
+        case 11: s = "CCROSSING ENTRY"; 
+                break;
+
+        case 12: s = "CCROSSING EXIT"; 
+                break;
+        case 13: s = "CCROSSING EXIT"; 
+                break;
+        case 14: s = "CCROSSING EXIT"; 
+                break;
+
+        case 15: s = "RCROSSING ENTRY"; 
+                break;
+        case 16: s = "RCROSSING ENTRY"; 
+                break;
+        case 17: s = "RCROSSING ENTRY"; 
+                break;
+
+        case 18: s = "RCROSSING EXIT"; 
+                break;
+        case 19: s = "RCROSSING EXIT"; 
+                break;
+        case 20: s = "RCROSSING EXIT"; 
+                break;
+        default: s = "UNKNOWN INTERSECTION"; 
+                break;
+    }
+    return s;
 }

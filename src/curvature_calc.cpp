@@ -1,46 +1,14 @@
-/*
- Node: curvature_calc
- Author: German Ruiz Mudarra, April 2020
-
- Description:
-    When "line_detection_fu_node" detects a certain number of points on a lane of the road, 
-    it adjust a polynomial, usually a parabola (ax²+bx+c).
-    This node receives the polynomial information and calculates the radius of curvature.
-    If the polynomial seems like a straight line, it will have a very low "a" value and the radius of curvature will tend to infinity. 
-    If the polynomial begins to have some curvature, then the radius of curvature will have a fixed value.
-
- Subscriptions:
-    /lane_model/poly_degrees (Float32Multiarray): Degree of the polynomials detected
-    /lane_model/coef/Left   (Float32Multiarray): [...,c,b,a] coefficients of the polynomials (Usually a parabola with 3 coefficients)
-    /lane_model/coef/Center
-    /lane_model/coef/Right
-
-Publications:
-    /curvature_calc/left    (Float32): Maximum radius of curvature o the polynomial.
-    /curvature_calc/center
-    /curvature_calc/right
-
- */
-
-#include "ros/ros.h"
-#include "std_msgs/Int32MultiArray.h"
-#include "std_msgs/Float32MultiArray.h"
-#include "std_msgs/Float32.h"
+#include "curvature_calc.h"
 
 // #define PLOT_CURVATURE_DATA
 
-static const uint32_t MY_ROS_QUEUE_SIZE = 1;
-
-using namespace std;
+static const uint32_t MY_ROS_QUEUE_SIZE = 1000;
 
 void cb_coefLeft(const std_msgs::Float32MultiArray::ConstPtr& msg);
 void cb_coefCenter(const std_msgs::Float32MultiArray::ConstPtr& msg);
 void cb_coefRight(const std_msgs::Float32MultiArray::ConstPtr& msg);
 void cb_degrees(const std_msgs::Int32MultiArray::ConstPtr& msg);
 void curvature_calculation();
-
-ros::Publisher curvature_pub;
-std_msgs::Float32MultiArray sent_message;
 
 #ifdef PLOT_CURVATURE_DATA
 ros::Publisher left_pub;
@@ -53,13 +21,8 @@ ros::Publisher right_pub;
 std_msgs::Float32 right_msg;
 #endif
 
-struct polynomial_t {
-    float a;
-    float b;
-    float c;
-    int degree;
-    float curvature;
-};
+ros::Publisher curvature_pub;
+std_msgs::Float32MultiArray curvature_array;
 
 polynomial_t LeftLane, CenterLane, RightLane;
 float LeftCurvature, CenterCurvature, RightCurvature;
@@ -70,7 +33,7 @@ float LeftCurvature, CenterCurvature, RightCurvature;
 
 	ros::NodeHandle nh;
     // Subscribe to polynomials degree data
-    ros::Subscriber degrees_sub = nh.subscribe("/lane_model/poly_degrees", MY_ROS_QUEUE_SIZE, cb_degrees);
+    ros::Subscriber degrees_sub = nh.subscribe("/lane_model/deg", MY_ROS_QUEUE_SIZE, cb_degrees);
     // Subscribe to polynomials coefficients data
     ros::Subscriber coefLeft_sub = nh.subscribe("/lane_model/coef/Left", MY_ROS_QUEUE_SIZE, cb_coefLeft);
     ros::Subscriber coefCenter_sub = nh.subscribe("/lane_model/coef/Center", MY_ROS_QUEUE_SIZE, cb_coefCenter);
@@ -84,24 +47,22 @@ float LeftCurvature, CenterCurvature, RightCurvature;
     right_pub = nh.advertise<std_msgs::Float32>("/curvature_calc/right", MY_ROS_QUEUE_SIZE);
     #endif
     
-    curvature_pub = nh.advertise<std_msgs::Float32MultiArray>("/curvature_calc/all", MY_ROS_QUEUE_SIZE);
+    curvature_pub = nh.advertise<std_msgs::Float32MultiArray>("/curvature_calc/array", MY_ROS_QUEUE_SIZE);
     
     while (ros::ok()) {
         // Clear array publication
-        sent_message.data.clear();
+        curvature_array.data.clear();
 
         // Calculate curvature radius      
         curvature_calculation();
 
         // Publish data
-        
         #ifdef PLOT_CURVATURE_DATA
         left_pub.publish(left_msg);
         center_pub.publish(center_msg);
         right_pub.publish(right_msg);
         #endif
-        
-        curvature_pub.publish(sent_message);
+        curvature_pub.publish(curvature_array);
         
         ros::spinOnce();
         sleep(1);
@@ -197,19 +158,15 @@ void cb_degrees(const std_msgs::Int32MultiArray::ConstPtr& msg) {
 
 void curvature_calculation() {
     //Curvature radius is defined by
-    /*
-    *   R_c = ((1+(df/dx)²)^3/2)/|d²f/dx| 
-    */
+    // R_c = ((1+(df/dx)²)^3/2)/|d²f/dx| 
     
     // Second grade curvature radius is then: 
-    /*
-    *   R_c = 1/(2*a)
-    */
+    // R_c = 1/(2*a)
 
     // Left Lane
     if(LeftLane.degree > 0) {
         LeftLane.curvature = 1/(2*LeftLane.a);
-        sent_message.data.push_back(LeftLane.curvature);
+        curvature_array.data.push_back(LeftLane.curvature);
         
         #ifdef PLOT_CURVATURE_DATA
         left_msg.data = LeftLane.curvature;
@@ -217,7 +174,7 @@ void curvature_calculation() {
     }
     else {
         //ROS_INFO("Couldn't calculate Left Lane curvature");
-        sent_message.data.push_back(0);
+        curvature_array.data.push_back(0);
         #ifdef PLOT_CURVATURE_DATA
             left_msg.data = 0;
         #endif
@@ -225,13 +182,13 @@ void curvature_calculation() {
     // Center Lane
     if(CenterLane.degree > 0) {
         CenterLane.curvature = 1/(2*CenterLane.a);
-        sent_message.data.push_back(CenterLane.curvature);
+        curvature_array.data.push_back(CenterLane.curvature);
         #ifdef PLOT_CURVATURE_DATA
             center_msg.data = CenterLane.curvature;
         #endif
     }
     else {
-        sent_message.data.push_back(0);
+        curvature_array.data.push_back(0);
         #ifdef PLOT_CURVATURE_DATA
             center_msg.data = 0;
         #endif
@@ -239,13 +196,13 @@ void curvature_calculation() {
     // Right Lane
     if(RightLane.degree > 0) {
         RightLane.curvature = 1/(2*RightLane.a);
-        sent_message.data.push_back(RightLane.curvature);
+        curvature_array.data.push_back(RightLane.curvature);
         #ifdef PLOT_CURVATURE_DATA
             right_msg.data = RightLane.curvature;
         #endif
     }
     else {
-        sent_message.data.push_back(0);
+        curvature_array.data.push_back(0);
         #ifdef PLOT_CURVATURE_DATA
             right_msg.data = 0;
         #endif
