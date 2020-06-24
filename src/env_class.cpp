@@ -60,7 +60,7 @@ std::vector<position_t> define_intersection_nodes(){
     std::vector<position_t> nodes_matrix;
     //Roundabout 
     //Entries:
-    nodes_matrix.push_back(position_t(1.55410,-3.95254));  //1
+    nodes_matrix.push_back(position_t( 1.72537,-3.9271));  //1
     nodes_matrix.push_back(position_t(-1.46146,-3.86171)); //2
     nodes_matrix.push_back(position_t(-1.84672,-5.23007)); //3
     nodes_matrix.push_back(position_t(1.75858,-5.81786));  //4
@@ -89,52 +89,6 @@ std::vector<position_t> define_intersection_nodes(){
     nodes_matrix.push_back(position_t(-5.2837767601,-5.79377508163)); // 20
 
     return nodes_matrix;
-}
-
-void environment_classifier(std::vector<position_t> map) {
-    string environment = "";
-    int node_id;
-    bool intersection;
-    if (!curvLane.center && !curvLane.right) {
-        intersection = check_position(map,node_id);
-        if (intersection) {
-            environment = intersection_class(node_id);
-        }
-        else {
-            environment = "LINE DETECTION FAILED";
-        }
-    }
-    else if (abs(curvLane.center) < 300 || abs(curvLane.center) < 300) {
-        environment = "CURVE";
-        if(curvLane.center < 0 || curvLane.right < 0) {
-            environment = "LEFT " + environment;
-        }
-        else if(curvLane.center > 0 || curvLane.right > 0) {
-            environment = "RIGHT " + environment;
-        }
-    }
-    else if (abs(curvLane.center) > 300 || abs(curvLane.right) > 300) {
-        environment = "STRAIGHT";
-    }
-    else
-    {
-        environment = "UNCERTAIN";
-    }
-    env_msg.data = environment;
-}
-
-bool check_position(std::vector<position_t> map, int& node_id) {
-    position_t node(0,0);
-    double dist;
-    for(int i = 0; i < map.size(); i++) {
-        node = map[i];
-        dist = get_distance(vehicle_pose,node);
-        if (dist <= 0.5) {
-            node_id = i+1;
-            return true;
-        }
-    }
-    return false;
 }
 
 string intersection_class(int node_id) {
@@ -189,4 +143,75 @@ string intersection_class(int node_id) {
                 break;
     }
     return s;
+}
+
+bool check_position(std::vector<position_t> map, int& node_id) {
+    position_t node(0,0);
+    double dist;
+    for(int i = 0; i < map.size(); i++) {
+        node = map[i];
+        dist = get_distance(vehicle_pose,node);
+        if (dist <= 0.5) {
+            node_id = i+1;
+            return true;
+        }
+    }
+    return false;
+}
+
+void environment_classifier(std::vector<position_t> map) {
+    string environment = "";
+    int node_id;   
+    bool intersection = check_position(map,node_id); 
+    
+    if (intersection) {
+            environment = intersection_class(node_id);
+    }
+    else {
+        if (abs(curvLane.center) < 300 || abs(curvLane.center) < 300) {
+            environment = "CURVE";
+            if(curvLane.center < 0 || curvLane.right < 0) {
+                environment = "LEFT " + environment;
+            }
+            else if(curvLane.center > 0 || curvLane.right > 0) {
+                environment = "RIGHT " + environment;
+            }
+        }
+        else if (abs(curvLane.center) > 300 || abs(curvLane.right) > 300) {
+            environment = "STRAIGHT";
+        }
+        else
+        {
+            environment = "UNCERTAIN";
+        }
+    }
+    
+    /*
+    if (!curvLane.center && !curvLane.right) {
+        intersection = check_position(map,node_id);
+        if (intersection) {
+            environment = intersection_class(node_id);
+        }
+        else {
+            environment = "LINE DETECTION FAILED";
+        }
+    }
+    else if (abs(curvLane.center) < 300 || abs(curvLane.center) < 300) {
+        environment = "CURVE";
+        if(curvLane.center < 0 || curvLane.right < 0) {
+            environment = "LEFT " + environment;
+        }
+        else if(curvLane.center > 0 || curvLane.right > 0) {
+            environment = "RIGHT " + environment;
+        }
+    }
+    else if (abs(curvLane.center) > 300 || abs(curvLane.right) > 300) {
+        environment = "STRAIGHT";
+    }
+    else
+    {
+        environment = "UNCERTAIN";
+    }
+    */
+    env_msg.data = environment;
 }
