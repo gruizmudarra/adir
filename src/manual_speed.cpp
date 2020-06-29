@@ -67,13 +67,13 @@ void get_speed_from_key(char input) {
                 // Stop
                 enable = false;
                 v = 0;
-                w = 90;
+                w = 0;
                 break;
             case 'x': 
                 // Backwards
                 enable = false;
-                v = 0;
-                w = 90;
+                v = -70;
+                w = 0;
                 break;
             case 'd':
                 // Right 
@@ -88,12 +88,6 @@ void get_speed_from_key(char input) {
                 w = 05;
                 break;
 
-            case 'r': 
-                // Roundabout
-                enable = false;
-                v = 50;
-                w = 49;
-                break;
             case 'c':{salir=true; break;} // Reinicia la consola
         }
     v_msg.data = v;

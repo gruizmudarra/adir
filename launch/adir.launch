@@ -1,6 +1,6 @@
 <launch>
-    <node pkg= "adir" type="curvature_calc" name="curvature_calc" />
-    <node pkg= "adir" type="env_class"      name="env_class"/>
-    <node pkg= "adir" type="manual_speed"      name="manual_speed"/>
+    <node pkg= "adir" type="curvature_calc" name="curvature_calc"/>
+    <node pkg= "adir" type="env_class"      name="env_class"        output="screen"/>
+    <!--node pkg= "adir" type="manual_speed"      name="manual_speed"/-->
 
 </launch>

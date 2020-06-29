@@ -1,6 +1,13 @@
 #include "env_class.h"
 
-static const uint32_t MY_ROS_QUEUE_SIZE = 1000;
+static const uint32_t LOOP_RATE = 1; // Hz
+static const uint32_t ODOM_QUEUE_SIZE = 1;
+static const uint32_t ENV_QUEUE_SIZE = 1;
+
+static const uint32_t CURV_QUEUE_SIZE = 1; // always 1 because it depends on the line_detection node publication rate
+
+
+
 
 curvature_t curvLane;
 position_t vehicle_pose(0,0); 
@@ -14,21 +21,24 @@ std_msgs::String env_msg;
 	ros::NodeHandle nh;
     
     // Subcriptions
-    ros::Subscriber curv_sub = nh.subscribe("/curvature_calc/array", MY_ROS_QUEUE_SIZE, cb_curvData);
-    ros::Subscriber odom_sub = nh.subscribe("/odom", MY_ROS_QUEUE_SIZE, cb_odomData);
+    ros::Subscriber curv_sub = nh.subscribe("/curvature_calc/array", CURV_QUEUE_SIZE, cb_curvData);
+    ros::Subscriber odom_sub = nh.subscribe("/odom", ODOM_QUEUE_SIZE, cb_odomData);
     
     // Publications
-    env_pub = nh.advertise<std_msgs::String>("/env_class", MY_ROS_QUEUE_SIZE);
+    env_pub = nh.advertise<std_msgs::String>("/env_class", ENV_QUEUE_SIZE);
     
     // Define topologic map
     std::vector<position_t> topologic_map = define_intersection_nodes();
 
+    ros::Rate node_loop_rate(LOOP_RATE);
+
     // Main loop
     while (ros::ok()) {
+        
         environment_classifier(topologic_map);
         env_pub.publish(env_msg);
         ros::spinOnce();
-        sleep(1);
+        node_loop_rate.sleep();
     }
     return 0;
  }
@@ -46,12 +56,13 @@ std_msgs::String env_msg;
  void cb_odomData(const nav_msgs::Odometry::ConstPtr& msg) {
      vehicle_pose.x = msg -> pose.pose.position.x;
      vehicle_pose.y = msg -> pose.pose.position.y; 
+     cout << "Vehicle pose -> x: " << vehicle_pose.x << " y: " << vehicle_pose.y << endl;
  }
 
- double get_distance(position_t p1, position_t p2) {
-     double dif_x = p1.x - p2.x;
-     double dif_y = p1.y - p2.y;
-     return (dif_x*dif_x)+(dif_y*dif_y);
+ double get_distance(position_t p, position_t q) {
+     double dif_x = q.x - p.x;
+     double dif_y = q.y - p.y;
+     return sqrt(pow(dif_x, 2.0)+pow(dif_y,2.0));
  }
 
 // Define cartesian coordinates of the point to turn
@@ -60,19 +71,19 @@ std::vector<position_t> define_intersection_nodes(){
     std::vector<position_t> nodes_matrix;
     //Roundabout 
     //Entries:
-    nodes_matrix.push_back(position_t( 1.72537,-3.9271));  //1
+    nodes_matrix.push_back(position_t( 1.5541,-3.95254));  //1
     nodes_matrix.push_back(position_t(-1.46146,-3.86171)); //2
     nodes_matrix.push_back(position_t(-1.84672,-5.23007)); //3
-    nodes_matrix.push_back(position_t(1.75858,-5.81786));  //4
+    nodes_matrix.push_back(position_t(2.0339,-5.9971));  //4
     //Exits
-    nodes_matrix.push_back(position_t(-0.674353599548, -3.6364672184));  //5
-    nodes_matrix.push_back(position_t(-1.48543524742, -4.52174901962)); //6
-    nodes_matrix.push_back(position_t(1.07619309425, -6.2709069252)); //7
-    nodes_matrix.push_back(position_t(1.59637641907, -4.8202419281));  //8
+    nodes_matrix.push_back(position_t(1.62657, -5.01499));  //5
+    nodes_matrix.push_back(position_t(-0.42097, -3.55602)); //6
+    nodes_matrix.push_back(position_t(1.51247, -4.46023)); //7
+    nodes_matrix.push_back(position_t(0.99706, -6.35349));  //8
     //Curved Crossing 
     //Entries:
     nodes_matrix.push_back(position_t(-3.8876,0.1944)); //9
-    nodes_matrix.push_back(position_t(-4.05578,-0.76218)); //10
+    nodes_matrix.push_back(position_t(-3.8842,-0.9597)); //10
     nodes_matrix.push_back(position_t(-4.87123,-1.24748)); //11
     //Exits:
     nodes_matrix.push_back(position_t(-3.5204603672, -0.246602073312)); // 15
@@ -85,7 +96,7 @@ std::vector<position_t> define_intersection_nodes(){
     nodes_matrix.push_back(position_t(-4.9159,-5.7948));   //14
     //Exits:
     nodes_matrix.push_back(position_t(-4.81341934204,-4.33024597168)); // 18
-    nodes_matrix.push_back(position_t(-3.7626,-5.30747));  //19
+    nodes_matrix.push_back(position_t(-4.17751,-5.30747));  //19
     nodes_matrix.push_back(position_t(-5.2837767601,-5.79377508163)); // 20
 
     return nodes_matrix;
@@ -94,50 +105,50 @@ std::vector<position_t> define_intersection_nodes(){
 string intersection_class(int node_id) {
     string s = "";
     switch(node_id) {
-        case 1: s = "ROUNDABOUT ENTRY"; 
+        case 1: s = "ROUNDABOUT ENTRY1"; 
                 break;
-        case 2: s = "ROUNDABOUT ENTRY"; 
+        case 2: s = "ROUNDABOUT ENTRY2"; 
                 break;
-        case 3: s = "ROUNDABOUT ENTRY"; 
+        case 3: s = "ROUNDABOUT ENTRY3"; 
                 break;
-        case 4: s = "ROUNDABOUT ENTRY"; 
+        case 4: s = "ROUNDABOUT ENTRY4"; 
                 break;
 
-        case 5: s = "ROUNDABOUT EXIT"; 
+        case 5: s = "ROUNDABOUT EXIT5"; 
                     break;
-        case 6: s = "ROUNDABOUT EXIT"; 
+        case 6: s = "ROUNDABOUT EXIT6"; 
                 break;
-        case 7: s = "ROUNDABOUT EXIT"; 
+        case 7: s = "ROUNDABOUT EXIT7"; 
                 break;
-        case 8: s = "ROUNDABOUT EXIT"; 
-                break;
-
-        case 9: s = "CCROSSING ENTRY"; 
-                break;
-        case 10: s = "CCROSSING ENTRY"; 
-                break;
-        case 11: s = "CCROSSING ENTRY"; 
+        case 8: s = "ROUNDABOUT EXIT8"; 
                 break;
 
-        case 12: s = "CCROSSING EXIT"; 
+        case 9: s = "CCROSSING ENTRY9"; 
                 break;
-        case 13: s = "CCROSSING EXIT"; 
+        case 10: s = "CCROSSING ENTRY10"; 
                 break;
-        case 14: s = "CCROSSING EXIT"; 
-                break;
-
-        case 15: s = "RCROSSING ENTRY"; 
-                break;
-        case 16: s = "RCROSSING ENTRY"; 
-                break;
-        case 17: s = "RCROSSING ENTRY"; 
+        case 11: s = "CCROSSING ENTRY11"; 
                 break;
 
-        case 18: s = "RCROSSING EXIT"; 
+        case 12: s = "CCROSSING EXIT15"; 
                 break;
-        case 19: s = "RCROSSING EXIT"; 
+        case 13: s = "CCROSSING EXIT16"; 
                 break;
-        case 20: s = "RCROSSING EXIT"; 
+        case 14: s = "CCROSSING EXIT17"; 
+                break;
+
+        case 15: s = "RCROSSING ENTRY12"; 
+                break;
+        case 16: s = "RCROSSING ENTRY13"; 
+                break;
+        case 17: s = "RCROSSING ENTRY14"; 
+                break;
+
+        case 18: s = "RCROSSING EXIT18"; 
+                break;
+        case 19: s = "RCROSSING EXIT19"; 
+                break;
+        case 20: s = "RCROSSING EXIT20"; 
                 break;
         default: s = "UNKNOWN INTERSECTION"; 
                 break;
@@ -151,7 +162,7 @@ bool check_position(std::vector<position_t> map, int& node_id) {
     for(int i = 0; i < map.size(); i++) {
         node = map[i];
         dist = get_distance(vehicle_pose,node);
-        if (dist <= 0.5) {
+        if (dist <= 0.25) {
             node_id = i+1;
             return true;
         }
@@ -163,18 +174,20 @@ void environment_classifier(std::vector<position_t> map) {
     string environment = "";
     int node_id;   
     bool intersection = check_position(map,node_id); 
-    
+    cout << node_id;
     if (intersection) {
-            environment = intersection_class(node_id);
+        environment = intersection_class(node_id);       
     }
     else {
         if (abs(curvLane.center) < 300 || abs(curvLane.center) < 300) {
-            environment = "CURVE";
             if(curvLane.center < 0 || curvLane.right < 0) {
-                environment = "LEFT " + environment;
+                environment = "LEFT CURVE ";
             }
             else if(curvLane.center > 0 || curvLane.right > 0) {
-                environment = "RIGHT " + environment;
+                environment = "RIGHT CURVE";
+            }
+            else {
+                environment = "UNCERTAIN";
             }
         }
         else if (abs(curvLane.center) > 300 || abs(curvLane.right) > 300) {

@@ -20,7 +20,7 @@
 #include "nav_msgs/Odometry.h"
 #include "geometry_msgs/Pose2D.h"
 #include "std_msgs/String.h"
-
+#include "iostream"
 using namespace std;
 
 struct curvature_t {
