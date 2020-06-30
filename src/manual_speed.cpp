@@ -2,6 +2,9 @@
 #include "std_msgs/UInt8.h"
 #include "std_msgs/Int16.h"
 #include "std_msgs/Bool.h"
+#include "iostream"
+
+using namespace std;
 
 int16_t v = 0;
 std_msgs::Int16 v_msg;
@@ -93,7 +96,9 @@ void get_speed_from_key(char input) {
     v_msg.data = v;
     w_msg.data = w;
     enable_msg.data = enable;
-    ROS_INFO_STREAM("Publishing:" << v_msg.data << " , " << w_msg.data << " , " << enable_msg.data);
+    cout << " Publishing: " << v_msg << " , " << w_msg << " , " << enable_msg << "\n";
+    
+    // Publishing
     v_pub.publish(v_msg);
     w_pub.publish(w_msg);
     enable_pub.publish(enable_msg);

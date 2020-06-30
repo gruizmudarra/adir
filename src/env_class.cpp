@@ -1,13 +1,9 @@
 #include "env_class.h"
 
-static const uint32_t LOOP_RATE = 1; // Hz
+static const uint32_t LOOP_RATE = 5; // Hz
 static const uint32_t ODOM_QUEUE_SIZE = 1;
 static const uint32_t ENV_QUEUE_SIZE = 1;
-
 static const uint32_t CURV_QUEUE_SIZE = 1; // always 1 because it depends on the line_detection node publication rate
-
-
-
 
 curvature_t curvLane;
 position_t vehicle_pose(0,0); 
@@ -34,7 +30,6 @@ std_msgs::String env_msg;
 
     // Main loop
     while (ros::ok()) {
-        
         environment_classifier(topologic_map);
         env_pub.publish(env_msg);
         ros::spinOnce();
@@ -174,14 +169,13 @@ void environment_classifier(std::vector<position_t> map) {
     string environment = "";
     int node_id;   
     bool intersection = check_position(map,node_id); 
-    cout << node_id;
     if (intersection) {
         environment = intersection_class(node_id);       
     }
     else {
         if (abs(curvLane.center) < 300 || abs(curvLane.center) < 300) {
             if(curvLane.center < 0 || curvLane.right < 0) {
-                environment = "LEFT CURVE ";
+                environment = "LEFT CURVE";
             }
             else if(curvLane.center > 0 || curvLane.right > 0) {
                 environment = "RIGHT CURVE";
@@ -198,33 +192,5 @@ void environment_classifier(std::vector<position_t> map) {
             environment = "UNCERTAIN";
         }
     }
-    
-    /*
-    if (!curvLane.center && !curvLane.right) {
-        intersection = check_position(map,node_id);
-        if (intersection) {
-            environment = intersection_class(node_id);
-        }
-        else {
-            environment = "LINE DETECTION FAILED";
-        }
-    }
-    else if (abs(curvLane.center) < 300 || abs(curvLane.center) < 300) {
-        environment = "CURVE";
-        if(curvLane.center < 0 || curvLane.right < 0) {
-            environment = "LEFT " + environment;
-        }
-        else if(curvLane.center > 0 || curvLane.right > 0) {
-            environment = "RIGHT " + environment;
-        }
-    }
-    else if (abs(curvLane.center) > 300 || abs(curvLane.right) > 300) {
-        environment = "STRAIGHT";
-    }
-    else
-    {
-        environment = "UNCERTAIN";
-    }
-    */
     env_msg.data = environment;
 }
