@@ -2,8 +2,8 @@
 
 static const uint32_t LOOP_RATE = 5; // Hz
 static const uint32_t ODOM_QUEUE_SIZE = 1;
-static const uint32_t ENV_QUEUE_SIZE = 1;
-static const uint32_t CURV_QUEUE_SIZE = 1; // always 1 because it depends on the line_detection node publication rate
+static const uint32_t ENV_QUEUE_SIZE = 1000;
+static const uint32_t CURV_QUEUE_SIZE = 1000;
 
 curvature_t curvLane;
 position_t vehicle_pose(0,0); 

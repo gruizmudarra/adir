@@ -96,7 +96,7 @@ void get_speed_from_key(char input) {
     v_msg.data = v;
     w_msg.data = w;
     enable_msg.data = enable;
-    cout << " Publishing: " << v_msg << " , " << w_msg << " , " << enable_msg << "\n";
+    // cout << " Publishing: " << v_msg << " , " << w_msg << " , " << enable_msg << "\n";
     
     // Publishing
     v_pub.publish(v_msg);

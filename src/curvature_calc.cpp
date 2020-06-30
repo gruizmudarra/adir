@@ -2,7 +2,11 @@
 
 // #define PLOT_CURVATURE_DATA
 
-static const uint32_t MY_ROS_QUEUE_SIZE = 1000;
+static const uint32_t LOOP_RATE = 5; // Hz
+
+
+static const uint32_t POLY_QUEUE_SIZE = 1;
+static const uint32_t CURV_QUEUE_SIZE = 1000;
 
 void cb_coefLeft(const std_msgs::Float32MultiArray::ConstPtr& msg);
 void cb_coefCenter(const std_msgs::Float32MultiArray::ConstPtr& msg);
@@ -33,21 +37,23 @@ float LeftCurvature, CenterCurvature, RightCurvature;
 
 	ros::NodeHandle nh;
     // Subscribe to polynomials degree data
-    ros::Subscriber degrees_sub = nh.subscribe("/lane_model/deg", MY_ROS_QUEUE_SIZE, cb_degrees);
+    ros::Subscriber degrees_sub = nh.subscribe("/lane_model/deg", POLY_QUEUE_SIZE, cb_degrees);
     // Subscribe to polynomials coefficients data
-    ros::Subscriber coefLeft_sub = nh.subscribe("/lane_model/coef/Left", MY_ROS_QUEUE_SIZE, cb_coefLeft);
-    ros::Subscriber coefCenter_sub = nh.subscribe("/lane_model/coef/Center", MY_ROS_QUEUE_SIZE, cb_coefCenter);
-    ros::Subscriber coefRight_sub = nh.subscribe("/lane_model/coef/Right", MY_ROS_QUEUE_SIZE, cb_coefRight);
+    ros::Subscriber coefLeft_sub = nh.subscribe("/lane_model/coef/Left", POLY_QUEUE_SIZE, cb_coefLeft);
+    ros::Subscriber coefCenter_sub = nh.subscribe("/lane_model/coef/Center", POLY_QUEUE_SIZE, cb_coefCenter);
+    ros::Subscriber coefRight_sub = nh.subscribe("/lane_model/coef/Right", POLY_QUEUE_SIZE, cb_coefRight);
     
     //Publications
     
     #ifdef PLOT_CURVATURE_DATA
-    left_pub = nh.advertise<std_msgs::Float32>("/curvature_calc/left", MY_ROS_QUEUE_SIZE);
-    center_pub = nh.advertise<std_msgs::Float32>("/curvature_calc/center", MY_ROS_QUEUE_SIZE);
-    right_pub = nh.advertise<std_msgs::Float32>("/curvature_calc/right", MY_ROS_QUEUE_SIZE);
+    left_pub = nh.advertise<std_msgs::Float32>("/curvature_calc/left", CURV_QUEUE_SIZE);
+    center_pub = nh.advertise<std_msgs::Float32>("/curvature_calc/center", CURV_QUEUE_SIZE);
+    right_pub = nh.advertise<std_msgs::Float32>("/curvature_calc/right", CURV_QUEUE_SIZE);
     #endif
     
-    curvature_pub = nh.advertise<std_msgs::Float32MultiArray>("/curvature_calc/array", MY_ROS_QUEUE_SIZE);
+    curvature_pub = nh.advertise<std_msgs::Float32MultiArray>("/curvature_calc/array", CURV_QUEUE_SIZE);
+
+    ros::Rate node_loop_rate(LOOP_RATE);
     
     while (ros::ok()) {
         // Clear array publication
@@ -65,7 +71,7 @@ float LeftCurvature, CenterCurvature, RightCurvature;
         curvature_pub.publish(curvature_array);
         
         ros::spinOnce();
-        sleep(1);
+        node_loop_rate.sleep();
     }
     return 0;
  }
