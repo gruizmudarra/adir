@@ -1,6 +1,6 @@
 #include "env_class.h"
 
-static const uint32_t LOOP_RATE = 5; // Hz
+static const uint32_t LOOP_RATE = 10; // Hz
 static const uint32_t ODOM_QUEUE_SIZE = 1;
 static const uint32_t ENV_QUEUE_SIZE = 1000;
 static const uint32_t CURV_QUEUE_SIZE = 1000;
@@ -18,7 +18,7 @@ std_msgs::String env_msg;
     
     // Subcriptions
     ros::Subscriber curv_sub = nh.subscribe("/curvature_calc/array", CURV_QUEUE_SIZE, cb_curvData);
-    ros::Subscriber odom_sub = nh.subscribe("/odom", ODOM_QUEUE_SIZE, cb_odomData);
+    ros::Subscriber odom_sub = nh.subscribe("/odom_ground_truth", ODOM_QUEUE_SIZE, cb_odomData);
     
     // Publications
     env_pub = nh.advertise<std_msgs::String>("/env_class", ENV_QUEUE_SIZE);
@@ -66,32 +66,32 @@ std::vector<position_t> define_intersection_nodes(){
     std::vector<position_t> nodes_matrix;
     //Roundabout 
     //Entries:
-    nodes_matrix.push_back(position_t( 1.5541,-3.95254));  //1
-    nodes_matrix.push_back(position_t(-1.46146,-3.86171)); //2
-    nodes_matrix.push_back(position_t(-1.84672,-5.23007)); //3
+    nodes_matrix.push_back(position_t( 2.0095,-3.72014));  //1
+    nodes_matrix.push_back(position_t(-1.84528,-3.550749)); //2
+    nodes_matrix.push_back(position_t(-2.37184,-5.291795)); //3
     nodes_matrix.push_back(position_t(2.0339,-5.9971));  //4
     //Exits
-    nodes_matrix.push_back(position_t(1.62657, -5.01499));  //5
+    nodes_matrix.push_back(position_t(1.5667, -5.1082));  //5
     nodes_matrix.push_back(position_t(-0.42097, -3.55602)); //6
-    nodes_matrix.push_back(position_t(1.51247, -4.46023)); //7
+    nodes_matrix.push_back(position_t(-1.404672, -4.3537)); //7
     nodes_matrix.push_back(position_t(0.99706, -6.35349));  //8
     //Curved Crossing 
     //Entries:
-    nodes_matrix.push_back(position_t(-3.8876,0.1944)); //9
-    nodes_matrix.push_back(position_t(-3.8842,-0.9597)); //10
-    nodes_matrix.push_back(position_t(-4.87123,-1.24748)); //11
+    nodes_matrix.push_back(position_t(-3.5204603672, 0.2)); //9
+    nodes_matrix.push_back(position_t(-3.690855,-1.07504)); //10
+    nodes_matrix.push_back(position_t(-4.87123,-1.58464717865)); //11
     //Exits:
-    nodes_matrix.push_back(position_t(-3.5204603672, -0.246602073312)); // 15
-    nodes_matrix.push_back(position_t(-3.705, -1.6246));    //16
+    nodes_matrix.push_back(position_t(-3.5204603672, -0.2)); // 15
+    nodes_matrix.push_back(position_t(-3.99613, -1.377046));    //16
     nodes_matrix.push_back(position_t(-5.28350496292, -1.58464717865)); // 17
     //Regular Crossing:
     //Entries:
-    nodes_matrix.push_back(position_t(-5.2882,-4.6787));   //12
-    nodes_matrix.push_back(position_t(-4.51369,-4.86417)); //13
+    nodes_matrix.push_back(position_t(-5.2882,-4.33024597168));   //12
+    nodes_matrix.push_back(position_t(-4.1720,-4.86417)); //13
     nodes_matrix.push_back(position_t(-4.9159,-5.7948));   //14
     //Exits:
     nodes_matrix.push_back(position_t(-4.81341934204,-4.33024597168)); // 18
-    nodes_matrix.push_back(position_t(-4.17751,-5.30747));  //19
+    nodes_matrix.push_back(position_t(-4.1720,-5.30747));  //19
     nodes_matrix.push_back(position_t(-5.2837767601,-5.79377508163)); // 20
 
     return nodes_matrix;
@@ -167,29 +167,38 @@ bool check_position(std::vector<position_t> map, int& node_id) {
 
 void environment_classifier(std::vector<position_t> map) {
     string environment = "";
-    int node_id;   
+    int node_id;
+    // Checking if the car is near (0.25 m) of a intersection   
     bool intersection = check_position(map,node_id); 
+    
+    // If it is near, get what intersection is in the topologic map
     if (intersection) {
         environment = intersection_class(node_id);       
     }
+    // If it is no near a intersection, check curvature to check if the car is in a straight or curved road
     else {
-        if (abs(curvLane.center) < 300 || abs(curvLane.center) < 300) {
-            if(curvLane.center < 0 || curvLane.right < 0) {
-                environment = "LEFT CURVE";
-            }
-            else if(curvLane.center > 0 || curvLane.right > 0) {
-                environment = "RIGHT CURVE";
-            }
-            else {
-                environment = "UNCERTAIN";
-            }
-        }
-        else if (abs(curvLane.center) > 300 || abs(curvLane.right) > 300) {
+        double mod_curv[2] = {abs(curvLane.center), abs(curvLane.right)};
+        // If curvature is greater than 300, then it's a straight road
+        if (mod_curv[0] > 300 || mod_curv[1] > 300) { 
             environment = "STRAIGHT";
         }
-        else
-        {
-            environment = "UNCERTAIN";
+        // If is lesser or equal than +-300
+        else {
+            // If it's not zero, it's a curved road
+            if (mod_curv[0] || mod_curv[1]) {
+                // Negative -> Left
+                if(curvLane.center < 0 || curvLane.right < 0) {
+                    environment = "LEFT CURVE";
+                }
+                // Positive -> Right
+                else {
+                    environment = "RIGHT CURVE";
+                }
+            }
+            // If it's zero, lane detection failed
+            else {
+                environment = "EXCEPTION";
+            }
         }
     }
     env_msg.data = environment;

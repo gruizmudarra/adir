@@ -10,9 +10,9 @@ int16_t v = 0;
 std_msgs::Int16 v_msg;
 ros::Publisher v_pub;
 
-uint8_t w = 0;
-std_msgs::UInt8 w_msg;
-ros::Publisher w_pub;
+uint8_t steer = 0;
+std_msgs::UInt8 steer_msg;
+ros::Publisher steer_pub;
 
 bool enable = true;
 std_msgs::Bool enable_msg;
@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
 
     // Variable para publicar por /cmd_key un mensaje de longitud 1000
     v_pub = nh.advertise<std_msgs::Int16>("/manual_control/speed", 1000);
-    w_pub = nh.advertise<std_msgs::UInt8>("/steering", 1000);
+    steer_pub = nh.advertise<std_msgs::UInt8>("/steering", 1000);
     enable_pub = nh.advertise<std_msgs::Bool>("/tracking_enable", 1000);
 
     // Objeto de ROS con la frecuencia del bucle
@@ -64,43 +64,43 @@ void get_speed_from_key(char input) {
                 // GoForward
                 enable = true;
                 v = 100;
-                w = 90;
+                steer = 127;
                 break;
             case 's': 
                 // Stop
                 enable = false;
                 v = 0;
-                w = 0;
+                steer = 127;
                 break;
             case 'x': 
                 // Backwards
                 enable = false;
                 v = -70;
-                w = 0;
+                steer = 127;
                 break;
             case 'd':
                 // Right 
                 enable = false;
                 v = 50;
-                w = 220;
+                steer = 220;
                 break;
             case 'a': 
                 // Left 
                 enable = false;
                 v = 50;
-                w = 05;
+                steer = 5;
                 break;
 
             case 'c':{salir=true; break;} // Reinicia la consola
         }
     v_msg.data = v;
-    w_msg.data = w;
+    steer_msg.data = steer;
     enable_msg.data = enable;
-    // cout << " Publishing: " << v_msg << " , " << w_msg << " , " << enable_msg << "\n";
+    // cout << " Publishing: " << v_msg << " , " << steer_msg << " , " << enable_msg << "\n";
     
     // Publishing
     v_pub.publish(v_msg);
-    w_pub.publish(w_msg);
+    steer_pub.publish(steer_msg);
     enable_pub.publish(enable_msg);
 
 }
