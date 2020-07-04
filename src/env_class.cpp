@@ -5,6 +5,8 @@ static const uint32_t ODOM_QUEUE_SIZE = 1;
 static const uint32_t ENV_QUEUE_SIZE = 1000;
 static const uint32_t CURV_QUEUE_SIZE = 1000;
 
+static const uint32_t CURV_LIMIT = 300;
+
 curvature_t curvLane;
 position_t vehicle_pose(0,0); 
 
@@ -171,7 +173,7 @@ void environment_classifier(std::vector<position_t> map) {
     // Checking if the car is near (0.25 m) of a intersection   
     bool intersection = check_position(map,node_id); 
     
-    // If it is near, get what intersection is in the topologic map
+    // If it is near an intersection, get what node is in the topologic map
     if (intersection) {
         environment = intersection_class(node_id);       
     }
@@ -179,7 +181,7 @@ void environment_classifier(std::vector<position_t> map) {
     else {
         double mod_curv[2] = {abs(curvLane.center), abs(curvLane.right)};
         // If curvature is greater than 300, then it's a straight road
-        if (mod_curv[0] > 300 || mod_curv[1] > 300) { 
+        if (mod_curv[0] > CURV_LIMIT || mod_curv[1] > CURV_LIMIT) { 
             environment = "STRAIGHT";
         }
         // If is lesser or equal than +-300
