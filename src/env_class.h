@@ -1,8 +1,8 @@
 /*
- Node: env_class (Environment Classifier)
+ Node: env_class 
  Author: German Ruiz Mudarra, May 2020
 
- Description:
+ Description: Environment Classifier
     
  Subscriptions:
  /curvature_calc/all (Information about curvature of the lanes)
@@ -34,8 +34,7 @@ struct position_t {
     double x;
     double y;
     // Constructor for easy mapping
-    position_t(double arg_x, double arg_y)
-        : x(arg_x), y(arg_y) { }
+    position_t(double arg_x, double arg_y) : x(arg_x), y(arg_y) {}
 };
 
 void cb_curvData(const std_msgs::Float32MultiArray::ConstPtr& msg);

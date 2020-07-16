@@ -102,22 +102,22 @@ std::vector<position_t> define_intersection_nodes(){
 string intersection_class(int node_id) {
     string s = "";
     switch(node_id) {
-        case 1: s = "ROUNDABOUT ENTRY1"; 
+        case 1: s = "ROUNDENTRY1"; 
                 break;
-        case 2: s = "ROUNDABOUT ENTRY2"; 
+        case 2: s = "ROUNDENTRY2"; 
                 break;
-        case 3: s = "ROUNDABOUT ENTRY3"; 
+        case 3: s = "ROUNDENTRY3"; 
                 break;
-        case 4: s = "ROUNDABOUT ENTRY4"; 
+        case 4: s = "ROUNDENTRY4"; 
                 break;
 
-        case 5: s = "ROUNDABOUT EXIT5"; 
+        case 5: s = "ROUNDEXIT5"; 
                     break;
-        case 6: s = "ROUNDABOUT EXIT6"; 
+        case 6: s = "ROUNDEXIT6"; 
                 break;
-        case 7: s = "ROUNDABOUT EXIT7"; 
+        case 7: s = "ROUNDEXIT7"; 
                 break;
-        case 8: s = "ROUNDABOUT EXIT8"; 
+        case 8: s = "ROUNDEXIT8"; 
                 break;
 
         case 9: s = "CCROSSING ENTRY9"; 

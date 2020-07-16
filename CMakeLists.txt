@@ -214,6 +214,12 @@ add_executable(env_class src/env_class.cpp)
 add_dependencies(env_class ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
 target_link_libraries(env_class ${catkin_LIBRARIES})
 
+## Declare node roudabout_planner
+add_executable(roundabout_planner src/roundabout_planner.cpp)
+add_dependencies(roundabout_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
+target_link_libraries(roundabout_planner ${catkin_LIBRARIES})
+
+
 ## Declare node manual_speed
 add_executable(manual_speed src/manual_speed.cpp)
 add_dependencies(manual_speed ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
