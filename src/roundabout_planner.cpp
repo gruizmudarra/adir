@@ -1,6 +1,6 @@
 #include "roundabout_planner.h"
 
-static const uint32_t LOOP_RATE = 10; // Hz
+static const uint32_t LOOP_RATE = 50; // Hz
 static const uint32_t ODOM_QUEUE_SIZE = 1;
 static const uint32_t ENV_QUEUE_SIZE = 1;
 static const uint32_t ENABLE_QUEUE_SIZE = 1;
@@ -9,12 +9,17 @@ position_t vehicle_pose(0,0);
 string environment = "";
 bool enable_roundabout_planner = false;
 int node = 0;
+double t = 0;
+maneuver_state_t maneuver_state = IDLE;
+
 
 static const position_t R0(0,-5.1); // Roundabout center
 static const double TRANSIT_RADIUS = 1.6; // Distance between road and center of the roundabout
 position_t r1(0,0), r2(0,0), i1(0,0), i2(0,0), i3(0,0), i4(0,0);
 position_t p0(0,0), p1(0,0), p2(0,0), p3(0,0), p4(0,0), p5(0,0), p6(0,0), p7(0,0), p8(0,0), p9(0,0);
 bool control_points_defined = false;
+
+static const double LOOKAHEAD =  0.1;
 
 #ifdef PRINT_MARKERS
 bool markers_printed = false;
@@ -44,9 +49,7 @@ int main(int argc, char **argv) {
     // Loop rate
     ros::Rate node_loop_rate(LOOP_RATE);
 
-    while (ros::ok())
-    {
-        
+    while (ros::ok()) {
         if (enable_roundabout_planner) {
             roundabout_reference_generator();
         }
@@ -106,10 +109,17 @@ position_t bezier_quartic(position_t p1, position_t p2, position_t p3, position_
     return pf;    
 }
 
+position_t circunference(position_t p, position_t c, double r, double t) {
+    double phi1 = atan2(p.y-c.y,p.x-c.x);
+    position_t p(0,0);
+    p.x = c.x + r*cos(phi1+t);
+    p.y = c.y + r*sin(phi1+t);
+    return p;
+}
  double get_distance(position_t p, position_t q) {
      double dif_x = q.x - p.x;
      double dif_y = q.y - p.y;
-     return sqrt(pow(dif_x, 2.0)+pow(dif_y,2.0));
+     return sqrt(dif_x*dif_x+dif_y*dif_x);
  }
 
  position_t get_vector(position_t p, position_t q) {
@@ -173,8 +183,8 @@ position_t bezier_quartic(position_t p1, position_t p2, position_t p3, position_
         default: 
             cout << "Exception on entry node. \n";
             break;
-        cout << "Restriction points of the entry created. \n";
     }
+    cout << "Restriction points of the entry created. \n";
     switch(exit){
         case 5: 
             //R2, I3 e I4
@@ -231,6 +241,7 @@ position_t bezier_quartic(position_t p1, position_t p2, position_t p3, position_
  void define_control_points() {
      // Entry control points
     cout << "Defining control points. \n";
+    r1 = vehicle_pose;
     double l0 = get_distance(R0, r1);
     cout << "l0 = " << l0 << "\n";
     p0.x = R0.x + l0*get_unit_vector(R0,r1).x;
@@ -275,7 +286,7 @@ position_t bezier_quartic(position_t p1, position_t p2, position_t p3, position_
     p9.x = R0.x + l9*get_unit_vector(R0,r2).x;
     p9.y = R0.y + l9*get_unit_vector(R0,r2).y;
 
-    double l8 = 0.75*l9;
+    double l8 = 0.85*l9;
     p8.x = R0.x + l8*get_unit_vector(R0,r2).x;
     p8.y = R0.y + l8*get_unit_vector(R0,r2).y;
  }
@@ -295,8 +306,8 @@ void print_markers() {
     restriction_points.type = visualization_msgs::Marker::POINTS;
 
     // POINTS markers use x and y scale for width/height respectively
-    restriction_points.scale.x = 0.1;
-    restriction_points.scale.y = 0.1;
+    restriction_points.scale.x = 0.05;
+    restriction_points.scale.y = 0.05;
 
     /*// Points are red
     restriction_points.color.r = 1.0;
@@ -341,8 +352,8 @@ void print_markers() {
     control_points.type = visualization_msgs::Marker::POINTS;
 
     // POINTS markers use x and y scale for width/height respectively
-    control_points.scale.x = 0.1;
-    control_points.scale.y = 0.1;
+    control_points.scale.x = 0.05;
+    control_points.scale.y = 0.05;
     /*
     // Points are green
     control_points.color.b = 1.0;
@@ -353,9 +364,38 @@ void print_markers() {
     int ii = 0.1;
     for(int kk = 0; kk <= 9; kk++) {
         std_msgs::ColorRGBA c;
-        c.r = ii;
-        c.g = ii;
-        c.b = 1.0;
+        switch(kk) {
+            case 0: 
+                c.g = 0.2;
+                break;
+            case 1: 
+                c.g = 0.4;
+                break;
+            case 2: 
+                c.g = 0.6;
+                break;
+            case 3: 
+                c.g = 0.8;
+                break;
+            case 4: 
+                c.g = 1.0;
+                break;
+            case 5: 
+                c.b = 0.2;
+                break;
+            case 6: 
+                c.b = 0.4;
+                break;
+            case 7: 
+                c.b = 0.6;
+                break;
+            case 8: 
+                c.b = 0.8;
+                break;
+            case 9: 
+                c.b = 1.0;
+                break;
+        }
         c.a = 1.0;
         q.x = control_points_vector[kk].x;
         q.y = control_points_vector[kk].y;
@@ -370,8 +410,7 @@ void print_markers() {
 #endif
 
 void roundabout_reference_generator() {
-    r1 = vehicle_pose;
-    if(!control_points_defined) {
+    if (!control_points_defined) {
         speed_msg.data = 0;
         speed_pub.publish(speed_msg);
         cout << "Roundabout detected! \n";
@@ -381,5 +420,54 @@ void roundabout_reference_generator() {
         print_markers();
         #endif
         control_points_defined = true;
+        maneuver_state = ENTRY_STATE;
+    }
+    position_t reference(0,0);
+    
+    switch (maneuver_state) {
+        case ENTRY_STATE:
+            reference = bezier_quartic(p0,p1,p2,p3,p4,t);
+            if (get_distance(vehicle_pose, reference) < LOOKAHEAD) {
+                t+= 0.1;
+            }
+            if(get_distance(vehicle_pose,p4) < LOOKAHEAD) {
+                t = 0;
+                maneuver_state = CIRCULATION_STATE;
+            }
+            break;
+        case CIRCULATION_STATE:
+            reference = circunference(p4,R0,TRANSIT_RADIUS,t);
+            if (get_distance(vehicle_pose, reference) < LOOKAHEAD) {
+                t+= 0.1;
+            }
+            if(get_distance(vehicle_pose,p5) < LOOKAHEAD) {
+                t = 0;
+                maneuver_state = EXIT_STATE;
+            }
+            break;
+        case EXIT_STATE:
+            reference = bezier_quartic(p5,p6,p7,p8,p9,t);
+            if (get_distance(vehicle_pose, reference) < LOOKAHEAD) {
+                t+= 0.1;
+            }
+            if(get_distance(vehicle_pose,p9) < LOOKAHEAD) {
+                t = 0;
+                maneuver_state = IDLE;
+            }
+            break;
+        case IDLE:
+            enable_roundabout_planner = false;
+            control_points_defined = false;
+            p0 = position_t(0,0);
+            p1 = position_t(0,0);
+            p2 = position_t(0,0);
+            p3 = position_t(0,0);
+            p4 = position_t(0,0);
+            p5 = position_t(0,0);
+            p6 = position_t(0,0);
+            p7 = position_t(0,0);
+            p8 = position_t(0,0);
+            p9 = position_t(0,0);
+        break;
     }
 }
