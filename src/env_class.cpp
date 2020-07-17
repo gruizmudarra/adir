@@ -13,6 +13,12 @@ position_t vehicle_pose(0,0);
 ros::Publisher env_pub;
 std_msgs::String env_msg;
 
+ros::Publisher node_pub;
+std_msgs::Int16 node_msg;
+
+ros::Publisher enable_pub;
+std_msgs::Bool enable_msg;
+
  int main (int argc, char **argv) {
     // Node info
     ros::init(argc, argv, "env_class");
@@ -24,7 +30,9 @@ std_msgs::String env_msg;
     
     // Publications
     env_pub = nh.advertise<std_msgs::String>("/env_class", ENV_QUEUE_SIZE);
-    
+    node_pub = nh.advertise<std_msgs::Int16>("/env_node", ENV_QUEUE_SIZE);
+    enable_pub = nh.advertise<std_msgs::Bool>("/enable_roundabout_planner", 1);
+
     // Define topologic map
     std::vector<position_t> topologic_map = define_intersection_nodes();
 
@@ -99,56 +107,96 @@ std::vector<position_t> define_intersection_nodes(){
     return nodes_matrix;
 }
 
-string intersection_class(int node_id) {
+string intersection_class(int node_id, int& node) {
     string s = "";
     switch(node_id) {
-        case 1: s = "ROUNDENTRY1"; 
-                break;
-        case 2: s = "ROUNDENTRY2"; 
-                break;
-        case 3: s = "ROUNDENTRY3"; 
-                break;
-        case 4: s = "ROUNDENTRY4"; 
-                break;
+        case 1: 
+            s = "ROUNDABOUT ENTRY1"; 
+            node = 1;
+            break;
+        case 2: 
+            s = "ROUNDABOUT ENTRY2";
+            node = 2; 
+            break;
+        case 3: 
+            s = "ROUNDABOUT ENTRY3"; 
+            node = 3;
+            break;
+        case 4: 
+            s = "ROUNDABOUT ENTRY4"; 
+            node = 4;
+            break;
 
-        case 5: s = "ROUNDEXIT5"; 
-                    break;
-        case 6: s = "ROUNDEXIT6"; 
-                break;
-        case 7: s = "ROUNDEXIT7"; 
-                break;
-        case 8: s = "ROUNDEXIT8"; 
-                break;
+        case 5: 
+            s = "ROUNDABOUT EXIT5"; 
+            node = 5;
+            break;
+        case 6: 
+            s = "ROUNDABOUT EXIT6"; 
+            node = 6;
+            break;
+        case 7: 
+            s = "ROUNDABOUT EXIT7";
+            node = 7; 
+            break;
+        case 8: 
+            s = "ROUNDABOUT EXIT8";
+            node = 8; 
+            break;
+        case 9: 
+            s = "CCROSSING ENTRY9";
+            node = 9; 
+            break;
+        case 10: 
+            s = "CCROSSING ENTRY10";
+            node = 10; 
+            break;
+        case 11: 
+            s = "CCROSSING ENTRY11";
+            node = 11; 
+            break;
 
-        case 9: s = "CCROSSING ENTRY9"; 
-                break;
-        case 10: s = "CCROSSING ENTRY10"; 
-                break;
-        case 11: s = "CCROSSING ENTRY11"; 
-                break;
+        case 12: 
+            s = "CCROSSING EXIT15";
+            node = 15; 
+            break;
+        case 13: 
+            s = "CCROSSING EXIT16";
+            node = 16; 
+            break;
+        case 14: 
+            s = "CCROSSING EXIT17";
+            node = 17; 
+            break;
+        case 15: 
+            s = "RCROSSING ENTRY12";
+            node = 12; 
+            break;
+        case 16: 
+            s = "RCROSSING ENTRY13";
+            node = 13; 
+            break;
+        case 17: 
+            s = "RCROSSING ENTRY14";
+            node = 14; 
+            break;
 
-        case 12: s = "CCROSSING EXIT15"; 
-                break;
-        case 13: s = "CCROSSING EXIT16"; 
-                break;
-        case 14: s = "CCROSSING EXIT17"; 
-                break;
-
-        case 15: s = "RCROSSING ENTRY12"; 
-                break;
-        case 16: s = "RCROSSING ENTRY13"; 
-                break;
-        case 17: s = "RCROSSING ENTRY14"; 
-                break;
-
-        case 18: s = "RCROSSING EXIT18"; 
-                break;
-        case 19: s = "RCROSSING EXIT19"; 
-                break;
-        case 20: s = "RCROSSING EXIT20"; 
-                break;
-        default: s = "UNKNOWN INTERSECTION"; 
-                break;
+        case 18: 
+            s = "RCROSSING EXIT18";
+            node = 18; 
+            break;
+        case 19: 
+            s = "RCROSSING EXIT19";
+            node = 19; 
+            break;
+        case 20: 
+            s = "RCROSSING EXIT20";
+            node = 20; 
+            break;
+        default: 
+            s = "UNKNOWN INTERSECTION";
+            node = 0; 
+            break;
     }
     return s;
 }
@@ -170,12 +218,17 @@ bool check_position(std::vector<position_t> map, int& node_id) {
 void environment_classifier(std::vector<position_t> map) {
     string environment = "";
     int node_id;
+    int node;
     // Checking if the car is near (0.25 m) of a intersection   
     bool intersection = check_position(map,node_id); 
     
     // If it is near an intersection, get what node is in the topologic map
     if (intersection) {
-        environment = intersection_class(node_id);       
+        environment = intersection_class(node_id, node);
+        node_msg.data = node;
+        node_pub.publish(node_msg);
+        enable_msg.data = true;
+        enable_pub.publish(enable_msg);       
     }
     // If it is no near a intersection, check curvature to check if the car is in a straight or curved road
     else {

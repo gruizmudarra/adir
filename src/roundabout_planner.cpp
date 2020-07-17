@@ -5,12 +5,24 @@ static const uint32_t ODOM_QUEUE_SIZE = 1;
 static const uint32_t ENV_QUEUE_SIZE = 1;
 static const uint32_t ENABLE_QUEUE_SIZE = 1;
 
-static const position_t R0(0,0); // Roundabout center
-static const double TRANSIT_RADIUS; // Distance between road and center of the roundabout
-
 position_t vehicle_pose(0,0);
 string environment = "";
 bool enable_roundabout_planner = false;
+int node = 0;
+
+static const position_t R0(0,-5.1); // Roundabout center
+static const double TRANSIT_RADIUS = 1.6; // Distance between road and center of the roundabout
+position_t r1(0,0), r2(0,0), i1(0,0), i2(0,0), i3(0,0), i4(0,0);
+position_t p0(0,0), p1(0,0), p2(0,0), p3(0,0), p4(0,0), p5(0,0), p6(0,0), p7(0,0), p8(0,0), p9(0,0);
+bool control_points_defined = false;
+
+#ifdef PRINT_MARKERS
+bool markers_printed = false;
+ros::Publisher marker_pub;
+#endif
+
+ros::Publisher speed_pub;
+std_msgs::Int16 speed_msg;
 
 int main(int argc, char **argv) {
     // Node info
@@ -20,14 +32,21 @@ int main(int argc, char **argv) {
     // Subscriptions
     ros::Subscriber odom_sub = nh.subscribe("/odom_ground_truth", ODOM_QUEUE_SIZE, cb_odomData);
     ros::Subscriber env_sub = nh.subscribe("/env_class", ENV_QUEUE_SIZE, cb_envData);
+    ros::Subscriber node_sub = nh.subscribe("/env_node", ENV_QUEUE_SIZE, cb_nodeData);
     ros::Subscriber enable_sub = nh.subscribe("/enable_roundabout_planner", ENABLE_QUEUE_SIZE, cb_enableData);
     // Publications
-
+    #ifdef PRINT_MARKERS
+    marker_pub = nh.advertise<visualization_msgs::Marker>("/control_points_marker", 20);
+    #endif
+    
+    speed_pub = nh.advertise<std_msgs::Int16>("/manual_control/speed", 1000);
+    
     // Loop rate
     ros::Rate node_loop_rate(LOOP_RATE);
 
     while (ros::ok())
     {
+        
         if (enable_roundabout_planner) {
             roundabout_reference_generator();
         }
@@ -48,6 +67,10 @@ void cb_envData(const std_msgs::String::ConstPtr& msg) {
 
 void cb_enableData(const std_msgs::Bool::ConstPtr& msg) {
     enable_roundabout_planner = msg -> data;
+}
+
+void cb_nodeData(const std_msgs::Int16::ConstPtr& msg) {
+    node = msg -> data;
 }
 
 double bezier_linear_scalar(double p0, double p1, double t) {
@@ -107,106 +130,256 @@ position_t bezier_quartic(position_t p1, position_t p2, position_t p3, position_
      return pq_unit;
  }
 
- void select_restriction_points(position_t& ientry1, position_t& ientry2, position_t& iexit1, position_t& iexit2, position_t& rexit) {
+ void select_restriction_points() {
      // Choose geometric points of the roundabout depending on the entry/exit
-    int entry = environment.back();
+    cout << "You are right now in the entry node " << node << ".\n";
+    int entry = node;
     int exit;
     cout << "Insert exit node (5-8): \n" ;
     cin >> exit;
     switch(entry){
-        case '1': 
+        case 1: 
             //I1 e I2
+            i1.x = 1.5932;
+            i1.y = -4.2102;
+
+            i2.x = 1.3563;
+            i2.y = -3.8594;
             break;
-        case '2':
+        case 2:
             //I1 e I2 
+            i1.x = -1.2862;
+            i1.y = -3.8050;
+            
+            i2.x = -1.5516;
+            i2.y = -4.1224;
             break;
-        case '3': 
+        case 3: 
             //I1 e I2
+            i1.x = -1.8500;
+            i1.y = -5.0816;
+
+            i2.x = -1.7652;
+            i2.y = -5.5090;
             break;
-        case '4': 
+        case 4: 
             //I1 e I2
+            i1.x = 1.5921;
+            i1.y = -5.9507;
+
+            i2.x = 1.7551 ;
+            i2.y = -5.5638;
             break;
         default: 
             cout << "Exception on entry node. \n";
             break;
+        cout << "Restriction points of the entry created. \n";
     }
     switch(exit){
-        case '5': 
+        case 5: 
             //R2, I3 e I4
+            i3.x = 1.5932;
+            i3.y = -4.2102;
+
+            i4.x = 1.7583 ;
+            i4.y = -4.6069;
+
+            r2.x = 2.3609;
+            r2.y = -4.0260;
             break;
-        case '6':
-            //R2, I3 e I4 
-            break;
-        case '7': 
+        case 6:
             //R2, I3 e I4
+            i3.x =-1.2862;
+            i3.y = -3.8050;
+
+            i4.x = -0.9478;
+            i4.y = -3.5434;
+
+            r2.x = -1.5341;
+            r2.y = -3.2025; 
             break;
-        case '8': 
+        case 7: 
             //R2, I3 e I4
+            i3.x = -1.8500;
+            i3.y = -5.0816;
+
+            i4.x = -1.7707;
+            i4.y = -4.6651;
+
+            r2.x = -2.3795;
+            r2.y = -4.8837;
+            break;
+        case 8: 
+            //R2, I3 e I4
+            i3.x = 1.5921;
+            i3.y = -5.9507;
+
+            i4.x = 1.3464;
+            i4.y = -6.2988;
+
+            r2.x = 2.0279;
+            r2.y = -6.4677;
             break;
         default: 
             cout << "Exception on exit node. \n";
             break;
     }
+    cout << "Restriction points of the exit created. \n";
  }
 
-void roundabout_reference_generator() {
-    position_t r1 = vehicle_pose;
-    double l0 = get_distance(r1,R0);
+
+ void define_control_points() {
+     // Entry control points
+    cout << "Defining control points. \n";
+    double l0 = get_distance(R0, r1);
     cout << "l0 = " << l0 << "\n";
-    position_t r2(0,0);
-    position_t i1(0,0), i2(0,0), i3(0,0), i4(0,0);
+    p0.x = R0.x + l0*get_unit_vector(R0,r1).x;
+    p0.y = R0.y + l0*get_unit_vector(R0,r1).y;
 
-    select_restriction_points(i1,i2,i3,i4,r2);
-    // Entry control points
-    position_t p0(0,0), p1(0,0), p2(0,0), p3(0,0), p4(0,0);
+    double l1 = 0.85*l0;
+    p1.x = R0.x + l1*get_unit_vector(R0,r1).x;
+    p1.y = R0.y + l1*get_unit_vector(R0,r1).y;
+
+    double l2 =0.15;
+    p2.x = i1.x + l2*get_unit_vector(i2,i1).x;
+    p2.y = i1.y + l2*get_unit_vector(i2,i1).y;
     
-    p0.x = R0.x + l0*get_unit_vector(r1,R0).x;
-    p0.y = R0.y + l0*get_unit_vector(r1,R0).y;
-
-    double l1 = 0.75*l0;
-    p1.x = R0.x + l1*get_unit_vector(r1,R0).x;
-    p1.y = R0.y + l1*get_unit_vector(r1,R0).y;
-
-    double l2;
-    p2.x = i1.x + l2*get_unit_vector(i1,i2).x;
-    p2.y = i1.y + l2*get_unit_vector(i1,i2).y;
-    
-    double l4;
+    double l4 = 0.5;
     double phi_entry = l4/TRANSIT_RADIUS;
     p4.x = TRANSIT_RADIUS*cos(atan2(r1.y-R0.y,r1.x-R0.x)+phi_entry)+R0.x;
     p4.y = TRANSIT_RADIUS*sin(atan2(r1.y-R0.y,r1.x-R0.x)+phi_entry)+R0.y;
 
     position_t normal_entry = get_unit_vector(p4,R0);
     position_t tangent_entry(normal_entry.y, -1*normal_entry.x); 
-    double l3;
+    double l3 = 0.2;
     p3.x = p4.x + l3*tangent_entry.x;
     p3.y = p4.y + l3*tangent_entry.y;
 
     // Exit control points (simetric to the entry calculation)
-    position_t p5(0,0), p6(0,0), p7(0,0), p8(0,0), p9(0,0);
-    
-    double l5;
+    double l5 = l4;
     double phi_exit = l5/TRANSIT_RADIUS;
     p5.x = TRANSIT_RADIUS*cos(atan2(r2.y-R0.y,r2.x-R0.x)-phi_exit)+R0.x;
     p5.y = TRANSIT_RADIUS*sin(atan2(r2.y-R0.y,r2.x-R0.x)-phi_exit)+R0.y;
 
     position_t normal_exit = get_unit_vector(p5,R0);
     position_t tangent_exit(normal_exit.y, -1*normal_exit.x); 
-    double l6;
+    double l6 = l3;
     p6.x = p5.x + l6*tangent_exit.x;
     p6.y = p5.y + l6*tangent_exit.y;
 
-    double l7;
-    p7.x = i3.x + l7*get_unit_vector(i3,i4).x;
-    p7.y = i3.y + l7*get_unit_vector(i3,i4).y;
+    double l7 = l2;
+    p7.x = i3.x + l7*get_unit_vector(i4,i3).x;
+    p7.y = i3.y + l7*get_unit_vector(i4,i3).y;
 
-    double l9 = get_distance(r2,R0);
-    p9.x = R0.x + l9*get_unit_vector(r2,R0).x;
-    p9.y = R0.y + l9*get_unit_vector(r2,R0).y;
+    double l9 = get_distance(R0,r2);
+    p9.x = R0.x + l9*get_unit_vector(R0,r2).x;
+    p9.y = R0.y + l9*get_unit_vector(R0,r2).y;
 
     double l8 = 0.75*l9;
-    p8.x = R0.x + l8*get_unit_vector(r2,R0).x;
-    p8.y = R0.y + l8*get_unit_vector(r2,R0).y;
+    p8.x = R0.x + l8*get_unit_vector(R0,r2).x;
+    p8.y = R0.y + l8*get_unit_vector(R0,r2).y;
+ }
 
+#ifdef PRINT_MARKERS
+void print_markers() {
+    // Restriction points configuration
+    visualization_msgs::Marker restriction_points;
+    restriction_points.header.frame_id = "world";
+    restriction_points.header.stamp = ros::Time::now();
+    restriction_points.ns = "restriction_points";
+    restriction_points.action = visualization_msgs::Marker::ADD;
+    restriction_points.pose.orientation.w  = 1.0;
     
+    restriction_points.id = 0;
+    
+    restriction_points.type = visualization_msgs::Marker::POINTS;
+
+    // POINTS markers use x and y scale for width/height respectively
+    restriction_points.scale.x = 0.1;
+    restriction_points.scale.y = 0.1;
+
+    /*// Points are red
+    restriction_points.color.r = 1.0;
+    restriction_points.color.a = 1.0;
+*/
+    geometry_msgs::Point p;
+
+    position_t restriction_points_vector[] = {R0, r1, r2, i1, i2, i3, i4};
+    
+    for(int k = 0; k <= 6; k++) {
+        std_msgs::ColorRGBA c;
+        if (k < 3) {
+            c.r = 1.0;
+        }
+        else if (k >=3 && k<5) {
+            c.r = 1;
+            c.g = 1;
+        }
+        else {
+            c.r = 1.0;
+            c.g = 0.5;
+        }
+        c.a = 1.0;
+
+        p.x = restriction_points_vector[k].x;
+        p.y = restriction_points_vector[k].y;
+        p.z = 0.25;
+        restriction_points.points.push_back(p);
+        restriction_points.colors.push_back(c);
+        
+    }
+    // Control points configuration
+    visualization_msgs::Marker control_points;
+    control_points.header.frame_id = "world";
+    control_points.header.stamp = ros::Time::now();
+    control_points.ns = "control_points";
+    control_points.action = visualization_msgs::Marker::ADD;
+    control_points.pose.orientation.w  = 1.0;
+    
+    control_points.id = 0;
+    
+    control_points.type = visualization_msgs::Marker::POINTS;
+
+    // POINTS markers use x and y scale for width/height respectively
+    control_points.scale.x = 0.1;
+    control_points.scale.y = 0.1;
+    /*
+    // Points are green
+    control_points.color.b = 1.0;
+    control_points.color.a = 1.0;
+*/
+    position_t control_points_vector[] = {p0, p1, p2, p3, p4, p5, p6, p7, p8, p9};
+    geometry_msgs::Point q;
+    int ii = 0.1;
+    for(int kk = 0; kk <= 9; kk++) {
+        std_msgs::ColorRGBA c;
+        c.r = ii;
+        c.g = ii;
+        c.b = 1.0;
+        c.a = 1.0;
+        q.x = control_points_vector[kk].x;
+        q.y = control_points_vector[kk].y;
+        q.z = 0.25;
+        control_points.points.push_back(q);
+        control_points.colors.push_back(c);
+        ii = ii + 0.1;
+    }
+    marker_pub.publish(restriction_points);
+    marker_pub.publish(control_points);
+}
+#endif
+
+void roundabout_reference_generator() {
+    r1 = vehicle_pose;
+    if(!control_points_defined) {
+        speed_msg.data = 0;
+        speed_pub.publish(speed_msg);
+        cout << "Roundabout detected! \n";
+        select_restriction_points();
+        define_control_points();
+        #ifdef PRINT_MARKERS
+        print_markers();
+        #endif
+        control_points_defined = true;
+    }
 }
