@@ -1,6 +1,6 @@
 #include "env_class.h"
 
-static const uint32_t LOOP_RATE = 10; // Hz
+static const uint32_t LOOP_RATE = 50; // Hz
 static const uint32_t ODOM_QUEUE_SIZE = 1;
 static const uint32_t ENV_QUEUE_SIZE = 1000;
 static const uint32_t CURV_QUEUE_SIZE = 1000;
@@ -61,7 +61,7 @@ std_msgs::Bool enable_msg;
  void cb_odomData(const nav_msgs::Odometry::ConstPtr& msg) {
      vehicle_pose.x = msg -> pose.pose.position.x;
      vehicle_pose.y = msg -> pose.pose.position.y; 
-     cout << "Vehicle pose -> x: " << vehicle_pose.x << " y: " << vehicle_pose.y << endl;
+     //cout << "Vehicle pose -> x: " << vehicle_pose.x << " y: " << vehicle_pose.y << endl;
  }
 
  double get_distance(position_t p, position_t q) {
@@ -256,5 +256,6 @@ void environment_classifier(std::vector<position_t> map) {
             }
         }
     }
+    //cout << environment << "\n";
     env_msg.data = environment;
 }
