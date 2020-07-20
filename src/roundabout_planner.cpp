@@ -11,7 +11,7 @@ bool enable_roundabout_planner = false;
 int node = 0;
 double t = 0.2;
 maneuver_state_t maneuver_state = DEFINITION_STATE;
-position_t r0(0,0), r1(0,0), r2(0,0), i1(0,0), i2(0,0), i3(0,0), i4(0,0);
+position_t r0(0,-5.1), r1(0,0), r2(0,0), i1(0,0), i2(0,0), i3(0,0), i4(0,0);
 position_t p0(0,0), p1(0,0), p2(0,0), p3(0,0), p4(0,0), p5(0,0), p6(0,0), p7(0,0), p8(0,0), p9(0,0);
 bool control_points_defined = false;
 static const double TRANSIT_RADIUS = 1.6; // Distance between road and center of the roundabout
@@ -136,7 +136,6 @@ position_t circunference(position_t P, position_t c, double r, double t) {
     int exit;
     cout << "Insert exit node (6-7-8-5): \n" ;
     cin >> exit;
-    r0 = position_t(0,-5.1); // Roundabout center
     r1 = vehicle_pose;
     switch(entry){
         case 1: 
@@ -167,13 +166,13 @@ position_t circunference(position_t P, position_t c, double r, double t) {
             r2 = position_t(2.3609,-4.0260);
             break;
         case 6:
-            i3 = position_t(1.2862,-3.8050);
+            i3 = position_t(-1.2862,-3.8050);
             i4 = position_t(-0.9478,-3.5434);
             r2 = position_t(-1.5341,-3.2025);
             break;
         case 7: 
-            i3 = position_t(1.8500,-5.0816);
-            i4 = position_t(1.7707,-4.6651);
+            i3 = position_t(-1.8500,-5.0816);
+            i4 = position_t(-1.7707,-4.6651);
             r2 = position_t(-2.3795,-4.8837);
             break;
         case 8: 
@@ -217,10 +216,10 @@ position_t circunference(position_t P, position_t c, double r, double t) {
     double phi_exit = l5/TRANSIT_RADIUS;
     p5 = position_t(TRANSIT_RADIUS*cos(atan2(r2.y-r0.y,r2.x-r0.x)-phi_exit)+r0.x,TRANSIT_RADIUS*sin(atan2(r2.y-r0.y,r2.x-r0.x)-phi_exit)+r0.y);
     // p6 = p5+l6*T. T is the tangent vector to the transit circunference p5
-    position_t normal_exit = get_unit_vector(p4,r0);
+    position_t normal_exit = get_unit_vector(p5,r0);
     position_t tangent_exit(normal_exit.y, -1*normal_exit.x); 
     double l6 = l3;
-    p6 = position_t(p4.x + l6*tangent_exit.x, p4.y + l6*tangent_exit.y);
+    p6 = position_t(p5.x + l6*tangent_exit.x, p5.y + l6*tangent_exit.y);
     // p7 = i3 + l7*get_unit_vector(i4,i3)
     double l7 = l2;
     p7 = position_t(i3.x + l7*get_unit_vector(i4,i3).x, i3.y + l7*get_unit_vector(i4,i3).y);
@@ -339,12 +338,10 @@ void roundabout_reference_generator() {
             #ifdef PRINT_MARKERS
             print_markers();
             #endif
-            control_points_defined = true;
             maneuver_state = ENTRY_STATE;
-            
+            cout << "Starting entrance... \n";
         break;
         case ENTRY_STATE:
-            cout << "Starting entrance... \n";
             reference = bezier_quartic(p0,p1,p2,p3,p4,t);
             if (get_distance(vehicle_pose, reference) < LOOKAHEAD) {
                 t+= 0.2;
@@ -353,11 +350,10 @@ void roundabout_reference_generator() {
             if(get_distance(vehicle_pose,p4) < LOOKAHEAD) {
                 t = 0;
                 maneuver_state = CIRCULATION_STATE;
-                
+                cout << "Circulating inside the roundabout... \n";
             }
             break;
         case CIRCULATION_STATE:
-            cout << "Circulating inside the roundabout... \n";
             reference = circunference(p4,r0,TRANSIT_RADIUS,t);
             if (get_distance(vehicle_pose, reference) < LOOKAHEAD) {
                 t+= 0.2;
@@ -366,10 +362,11 @@ void roundabout_reference_generator() {
             if(get_distance(vehicle_pose,p5) < LOOKAHEAD) {
                 t = 0;
                 maneuver_state = EXIT_STATE;
+                cout << "Exiting roundabout... \n";
             }
             break;
         case EXIT_STATE:
-            cout << "Exiting roundabout. \n";
+            
             reference = bezier_quartic(p5,p6,p7,p8,p9,t);
             if (get_distance(vehicle_pose, reference) < LOOKAHEAD) {
                 t+= 0.2;
@@ -378,11 +375,11 @@ void roundabout_reference_generator() {
             if(get_distance(vehicle_pose,p9) < LOOKAHEAD) {
                 t = 0.2;
                 maneuver_state = IDLE;
-                
+                cout << "Maneuver finished. \n";
             }
             break;
         case IDLE:
-            cout << "Maneuver finished. \n";
+            
             enable_roundabout_planner = false;
             control_points_defined = false;
             maneuver_state = DEFINITION_STATE;
