@@ -64,10 +64,8 @@ std_msgs::Bool enable_msg;
      //cout << "Vehicle pose -> x: " << vehicle_pose.x << " y: " << vehicle_pose.y << endl;
  }
 
- double get_distance(position_t p, position_t q) {
-     double dif_x = q.x - p.x;
-     double dif_y = q.y - p.y;
-     return sqrt(pow(dif_x, 2.0)+pow(dif_y,2.0));
+  double get_distance(position_t p, position_t q) {
+     return sqrt((q.x - p.x)*(q.x - p.x)+(q.y - p.y)*(q.y - p.y));
  }
 
 // Define cartesian coordinates of the point to turn

@@ -25,18 +25,28 @@ Publications:
 #define CURVATURE_CALC_H
 
 #include "ros/ros.h"
+
+#include "iostream"
+using namespace std;
+
+#include "math.h"
+
 #include "std_msgs/Int32MultiArray.h"
 #include "std_msgs/Float32MultiArray.h"
 #include "std_msgs/Float32.h"
 
 struct polynomial_t {
-    float a;
-    float b;
-    float c;
+    double a;
+    double b;
+    double c;
     int degree;
-    float curvature;
+    double curvature;
 };
 
-using namespace std;
+void cb_coefLeft(const std_msgs::Float32MultiArray::ConstPtr& msg);
+void cb_coefCenter(const std_msgs::Float32MultiArray::ConstPtr& msg);
+void cb_coefRight(const std_msgs::Float32MultiArray::ConstPtr& msg);
+void cb_degrees(const std_msgs::Int32MultiArray::ConstPtr& msg);
+void curvature_calculation();
 
 #endif

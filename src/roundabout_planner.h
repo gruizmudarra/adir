@@ -14,6 +14,11 @@
 #define ROUNDABOUT_PLANNER_H
 #include "ros/ros.h"
 
+#include "iostream"
+using namespace std;
+
+#include "math.h"
+
 #include "nav_msgs/Odometry.h"
 #include "std_msgs/Int16.h"
 #include "std_msgs/String.h"
@@ -21,13 +26,7 @@
 #include "visualization_msgs/Marker.h"
 #include "geometry_msgs/Point.h"
 
-#include "iostream"
-#include "math.h"
-
 #define PRINT_MARKERS
-
-
-using namespace std;
 
 // Cartesian coordinates
 struct position_t {
@@ -36,6 +35,7 @@ struct position_t {
     // Constructor for easy mapping
     position_t(double arg_x, double arg_y) : x(arg_x), y(arg_y) {}
 };
+
 enum maneuver_state_t {IDLE, DEFINITION_STATE, ENTRY_STATE, CIRCULATION_STATE, EXIT_STATE};
 
 // Subscription callbacks
@@ -53,10 +53,10 @@ position_t circunference(position_t P, position_t c, double r, double t);
 double get_distance(position_t p, position_t q);
 position_t get_vector(position_t p, position_t q);
 position_t get_unit_vector(position_t p, position_t q);
+
 void select_restriction_points();
 void define_control_points();
 void print_markers();
 void print_reference(position_t point);
 void roundabout_reference_generator();
-
 #endif

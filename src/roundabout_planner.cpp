@@ -9,7 +9,7 @@ position_t vehicle_pose(0,0);
 string environment = "";
 bool enable_roundabout_planner = false;
 int node = 0;
-double t = 0.2;
+double t = 0.1;
 maneuver_state_t maneuver_state = DEFINITION_STATE;
 position_t r0(0,-5.1), r1(0,0), r2(0,0), i1(0,0), i2(0,0), i3(0,0), i4(0,0);
 position_t p0(0,0), p1(0,0), p2(0,0), p3(0,0), p4(0,0), p5(0,0), p6(0,0), p7(0,0), p8(0,0), p9(0,0);
@@ -27,6 +27,9 @@ std_msgs::Int16 speed_msg;
 ros::Publisher reference_pub;
 geometry_msgs::Point reference_msg;
 
+ros::Publisher enable_control_pub;
+std_msgs::Bool enable_control_msg;
+
 int main(int argc, char **argv) {
     // Node info
     ros::init(argc, argv, "roundabout_planner");
@@ -43,7 +46,7 @@ int main(int argc, char **argv) {
     #endif
     reference_pub = nh.advertise<geometry_msgs::Point>("/reference",1000);
     speed_pub = nh.advertise<std_msgs::Int16>("/manual_control/speed", 1000);
-    
+    enable_control_pub = nh.advertise<std_msgs::Bool>("/enable_car_control", 1000);
     // Loop rate
     ros::Rate node_loop_rate(LOOP_RATE);
 
@@ -110,6 +113,7 @@ position_t circunference(position_t P, position_t c, double r, double t) {
     position_t Q(c.x + r*cos(phi+t), c.y + r*sin(phi+t));
     return Q;
 }
+
  double get_distance(position_t p, position_t q) {
      return sqrt((q.x - p.x)*(q.x - p.x)+(q.y - p.y)*(q.y - p.y));
  }
@@ -119,7 +123,7 @@ position_t circunference(position_t P, position_t c, double r, double t) {
     return pq;
  }
 
- position_t get_unit_vector(position_t p, position_t q) {
+position_t get_unit_vector(position_t p, position_t q) {
      position_t pq = get_vector(p,q);
      double dist = get_distance(p,q);
      position_t pq_unit(0,0);
@@ -128,6 +132,7 @@ position_t circunference(position_t P, position_t c, double r, double t) {
      }
      return pq_unit;
  }
+
 
  void select_restriction_points() {
      // Choose geometric points of the roundabout depending on the entry/exit
@@ -340,14 +345,16 @@ void roundabout_reference_generator() {
             #endif
             maneuver_state = ENTRY_STATE;
             cout << "Starting entrance... \n";
+            enable_control_msg.data = true;
+            enable_control_pub.publish(enable_control_msg);
         break;
         case ENTRY_STATE:
             reference = bezier_quartic(p0,p1,p2,p3,p4,t);
             if (get_distance(vehicle_pose, reference) < LOOKAHEAD) {
-                t+= 0.2;
+                t+= 0.05;
                 cout << "New reference generated. \n";
             }
-            if(get_distance(vehicle_pose,p4) < LOOKAHEAD) {
+            if(get_distance(vehicle_pose,p4) < LOOKAHEAD || t > 1) {
                 t = 0;
                 maneuver_state = CIRCULATION_STATE;
                 cout << "Circulating inside the roundabout... \n";
@@ -356,7 +363,7 @@ void roundabout_reference_generator() {
         case CIRCULATION_STATE:
             reference = circunference(p4,r0,TRANSIT_RADIUS,t);
             if (get_distance(vehicle_pose, reference) < LOOKAHEAD) {
-                t+= 0.2;
+                t+= 0.05;
                 cout << "New reference generated. \n";
             }
             if(get_distance(vehicle_pose,p5) < LOOKAHEAD) {
@@ -366,20 +373,22 @@ void roundabout_reference_generator() {
             }
             break;
         case EXIT_STATE:
-            
             reference = bezier_quartic(p5,p6,p7,p8,p9,t);
             if (get_distance(vehicle_pose, reference) < LOOKAHEAD) {
-                t+= 0.2;
+                t+= 0.05;
                 cout << "New reference generated. \n";
             }
             if(get_distance(vehicle_pose,p9) < LOOKAHEAD) {
-                t = 0.2;
+                t = 0.1;
                 maneuver_state = IDLE;
                 cout << "Maneuver finished. \n";
             }
             break;
         case IDLE:
-            
+            /* Provisional */
+            enable_control_msg.data = false;
+            enable_control_pub.publish(enable_control_msg);
+            /**/
             enable_roundabout_planner = false;
             control_points_defined = false;
             maneuver_state = DEFINITION_STATE;

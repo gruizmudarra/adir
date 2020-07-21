@@ -64,19 +64,19 @@ void get_speed_from_key(char input) {
                 // GoForward
                 enable = true;
                 v = 100;
-                steer = 127;
+                steer = 90;
                 break;
             case 's': 
                 // Stop
                 enable = false;
                 v = 0;
-                steer = 127;
+                steer = 90;
                 break;
             case 'x': 
                 // Backwards
                 enable = false;
                 v = -70;
-                steer = 127;
+                steer = 90;
                 break;
             case 'd':
                 // Right 
@@ -88,7 +88,7 @@ void get_speed_from_key(char input) {
                 // Left 
                 enable = false;
                 v = 50;
-                steer = 5;
+                steer = 0;
                 break;
 
             case 'c':{salir=true; break;} // Reinicia la consola

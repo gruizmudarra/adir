@@ -133,6 +133,11 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/adir_node.cpp)
+add_executable(curvature_calc src/curvature_calc.cpp)
+add_executable(env_class src/env_class.cpp)
+add_executable(roundabout_planner src/roundabout_planner.cpp)
+add_executable(car_controller src/car_controller.cpp)
+add_executable(manual_speed src/manual_speed.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -143,11 +148,21 @@ include_directories(
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(curvature_calc ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
+add_dependencies(env_class ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
+add_dependencies(roundabout_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
+add_dependencies(car_controller ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
+add_dependencies(manual_speed ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
+target_link_libraries(curvature_calc ${catkin_LIBRARIES})
+target_link_libraries(env_class ${catkin_LIBRARIES})
+target_link_libraries(roundabout_planner ${catkin_LIBRARIES})
+target_link_libraries(car_controller ${catkin_LIBRARIES})
+target_link_libraries(manual_speed ${catkin_LIBRARIES})
 
 #############
 ## Install ##
@@ -203,28 +218,3 @@ include_directories(
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
-
-## Declare node curvature_calc
-add_executable(curvature_calc src/curvature_calc.cpp)
-add_dependencies(curvature_calc ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
-target_link_libraries(curvature_calc ${catkin_LIBRARIES})
-
-## Declare node env_class
-add_executable(env_class src/env_class.cpp)
-add_dependencies(env_class ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
-target_link_libraries(env_class ${catkin_LIBRARIES})
-
-## Declare node roundabout_planner
-add_executable(roundabout_planner src/roundabout_planner.cpp)
-add_dependencies(roundabout_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
-target_link_libraries(roundabout_planner ${catkin_LIBRARIES})
-
-## Declare node car_controller
-add_executable(car_controller src/car_controller.cpp)
-add_dependencies(car_controller ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
-target_link_libraries(car_controller ${catkin_LIBRARIES})
-
-## Declare node manual_speed
-add_executable(manual_speed src/manual_speed.cpp)
-add_dependencies(manual_speed ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
-target_link_libraries(manual_speed ${catkin_LIBRARIES})

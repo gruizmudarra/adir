@@ -8,12 +8,6 @@ static const uint32_t LOOP_RATE = 5; // Hz
 static const uint32_t POLY_QUEUE_SIZE = 1;
 static const uint32_t CURV_QUEUE_SIZE = 1000;
 
-void cb_coefLeft(const std_msgs::Float32MultiArray::ConstPtr& msg);
-void cb_coefCenter(const std_msgs::Float32MultiArray::ConstPtr& msg);
-void cb_coefRight(const std_msgs::Float32MultiArray::ConstPtr& msg);
-void cb_degrees(const std_msgs::Int32MultiArray::ConstPtr& msg);
-void curvature_calculation();
-
 #ifdef PLOT_CURVATURE_DATA
 ros::Publisher left_pub;
 std_msgs::Float32 left_msg;
