@@ -351,7 +351,7 @@ void roundabout_reference_generator() {
         case ENTRY_STATE:
             reference = bezier_quartic(p0,p1,p2,p3,p4,t);
             if (get_distance(vehicle_pose, reference) < LOOKAHEAD) {
-                t+= 0.05;
+                t+= 0.025;
                 cout << "New reference generated. \n";
             }
             if(get_distance(vehicle_pose,p4) < LOOKAHEAD || t > 1) {
@@ -363,7 +363,7 @@ void roundabout_reference_generator() {
         case CIRCULATION_STATE:
             reference = circunference(p4,r0,TRANSIT_RADIUS,t);
             if (get_distance(vehicle_pose, reference) < LOOKAHEAD) {
-                t+= 0.05;
+                t+= 0.025;
                 cout << "New reference generated. \n";
             }
             if(get_distance(vehicle_pose,p5) < LOOKAHEAD) {
@@ -375,7 +375,7 @@ void roundabout_reference_generator() {
         case EXIT_STATE:
             reference = bezier_quartic(p5,p6,p7,p8,p9,t);
             if (get_distance(vehicle_pose, reference) < LOOKAHEAD) {
-                t+= 0.05;
+                t+= 0.025;
                 cout << "New reference generated. \n";
             }
             if(get_distance(vehicle_pose,p9) < LOOKAHEAD) {

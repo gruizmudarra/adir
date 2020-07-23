@@ -23,7 +23,9 @@ struct car_state_t {
     double x;
     double y;
     double theta;
-    double v;  
+    int theta_deg;
+    double v; 
+    double speed_state; 
 };
 
 struct quaternion_t {
@@ -36,6 +38,7 @@ struct quaternion_t {
 void cb_referenceData(const geometry_msgs::Point::ConstPtr& msg);
 void cb_odomData(const nav_msgs::Odometry::ConstPtr& msg);
 void cb_enable_controlData(const std_msgs::Bool::ConstPtr& msg);
-double angle_wrap(double a);
-void car_control();
-void computeControlCmd();
+uint8_t saturationU8(int a);
+int16_t saturation16(int a);
+void orientationControl();
+void speedControl();
