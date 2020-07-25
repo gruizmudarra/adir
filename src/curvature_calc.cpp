@@ -2,9 +2,6 @@
 
 // #define PLOT_CURVATURE_DATA
 
-static const uint32_t LOOP_RATE = 5; // Hz
-
-
 static const uint32_t POLY_QUEUE_SIZE = 1;
 static const uint32_t CURV_QUEUE_SIZE = 1000;
 
@@ -19,23 +16,23 @@ ros::Publisher right_pub;
 std_msgs::Float32 right_msg;
 #endif
 
-ros::Publisher curvature_pub;
-std_msgs::Float32MultiArray curvature_array;
+adir::curvature_t curvature_msg;
 
 polynomial_t LeftLane, CenterLane, RightLane;
-float LeftCurvature, CenterCurvature, RightCurvature;
 
  int main (int argc, char **argv) {
     
     ros::init(argc, argv, "curvature_calc");
 
 	ros::NodeHandle nh;
+    //Get params
+    nh.param<int>("/loop_rate", loop_rate,50);
     // Subscribe to polynomials degree data
-    ros::Subscriber degrees_sub = nh.subscribe("/lane_model/deg", POLY_QUEUE_SIZE, cb_degrees);
+    ros::Subscriber degrees_sub = nh.subscribe("/lane_model/deg", POLY_QUEUE_SIZE, callbackDegrees);
     // Subscribe to polynomials coefficients data
-    ros::Subscriber coefLeft_sub = nh.subscribe("/lane_model/coef/Left", POLY_QUEUE_SIZE, cb_coefLeft);
-    ros::Subscriber coefCenter_sub = nh.subscribe("/lane_model/coef/Center", POLY_QUEUE_SIZE, cb_coefCenter);
-    ros::Subscriber coefRight_sub = nh.subscribe("/lane_model/coef/Right", POLY_QUEUE_SIZE, cb_coefRight);
+    ros::Subscriber coefLeft_sub = nh.subscribe("/lane_model/coef/Left", POLY_QUEUE_SIZE, callbackCoefLeft);
+    ros::Subscriber coefCenter_sub = nh.subscribe("/lane_model/coef/Center", POLY_QUEUE_SIZE, callbackCoefCenter);
+    ros::Subscriber coefRight_sub = nh.subscribe("/lane_model/coef/Right", POLY_QUEUE_SIZE, callbackCoefRight);
     
     //Publications
     
@@ -45,16 +42,13 @@ float LeftCurvature, CenterCurvature, RightCurvature;
     right_pub = nh.advertise<std_msgs::Float32>("/curvature_calc/right", CURV_QUEUE_SIZE);
     #endif
     
-    curvature_pub = nh.advertise<std_msgs::Float32MultiArray>("/curvature_calc/array", CURV_QUEUE_SIZE);
+    ros::Publisher curvature_pub = nh.advertise<adir::curvature_t>("/lane_curvature", CURV_QUEUE_SIZE);
 
-    ros::Rate node_loop_rate(LOOP_RATE);
+    ros::Rate node_loop_rate(loop_rate);
     
     while (ros::ok()) {
-        // Clear array publication
-        curvature_array.data.clear();
-
         // Calculate curvature radius      
-        curvature_calculation();
+        curvatureCalculation();
 
         // Publish data
         #ifdef PLOT_CURVATURE_DATA
@@ -62,7 +56,7 @@ float LeftCurvature, CenterCurvature, RightCurvature;
         center_pub.publish(center_msg);
         right_pub.publish(right_msg);
         #endif
-        curvature_pub.publish(curvature_array);
+        curvature_pub.publish(curvature_msg);
         
         ros::spinOnce();
         node_loop_rate.sleep();
@@ -70,7 +64,7 @@ float LeftCurvature, CenterCurvature, RightCurvature;
     return 0;
  }
 
-void cb_coefLeft(const std_msgs::Float32MultiArray::ConstPtr& msg) {
+void callbackCoefLeft(const std_msgs::Float32MultiArray::ConstPtr& msg) {
     std::vector<float> temp_data;
     for (int i=0; i < msg-> data.size(); i++) {
         temp_data.push_back(msg -> data[i]);
@@ -93,7 +87,7 @@ void cb_coefLeft(const std_msgs::Float32MultiArray::ConstPtr& msg) {
     ROS_INFO("Left Coef data saved");
 }
 
-void cb_coefCenter(const std_msgs::Float32MultiArray::ConstPtr& msg) {
+void callbackCoefCenter(const std_msgs::Float32MultiArray::ConstPtr& msg) {
     std::vector<float> temp_data;
     for (int i=0; i < msg-> data.size(); i++) {
         temp_data.push_back(msg -> data[i]);
@@ -116,7 +110,7 @@ void cb_coefCenter(const std_msgs::Float32MultiArray::ConstPtr& msg) {
     ROS_INFO("Center Coef data saved");
 }
 
-void cb_coefRight(const std_msgs::Float32MultiArray::ConstPtr& msg) {
+void callbackCoefRight(const std_msgs::Float32MultiArray::ConstPtr& msg) {
     // Extract data to a temporary variable
     std::vector<float> temp_data;
     for (int i=0; i < msg-> data.size(); i++) {
@@ -143,7 +137,7 @@ void cb_coefRight(const std_msgs::Float32MultiArray::ConstPtr& msg) {
     ROS_INFO("Right Coef data saved");
 }
 
-void cb_degrees(const std_msgs::Int32MultiArray::ConstPtr& msg) {
+void callbackDegrees(const std_msgs::Int32MultiArray::ConstPtr& msg) {
     // Extract data to a temporary variable
     std::vector<int> temp_data;
     for (int i=0; i < msg -> data.size(); i++) {
@@ -156,7 +150,7 @@ void cb_degrees(const std_msgs::Int32MultiArray::ConstPtr& msg) {
     ROS_INFO("Degree data saved");
 }
 
-void curvature_calculation() {
+void curvatureCalculation() {
     //Curvature radius is defined by
     // R_c = ((1+(df/dx)²)^3/2)/|d²f/dx| 
     
@@ -165,44 +159,40 @@ void curvature_calculation() {
 
     // Left Lane
     if(LeftLane.degree > 0) {
-        LeftLane.curvature = 1/(2*LeftLane.a);
-        curvature_array.data.push_back(LeftLane.curvature);
-        
+        curvature_msg.left = 1/(2*LeftLane.a);
         #ifdef PLOT_CURVATURE_DATA
         left_msg.data = LeftLane.curvature;
         #endif
     }
     else {
         //ROS_INFO("Couldn't calculate Left Lane curvature");
-        curvature_array.data.push_back(0);
+        curvature_msg.left = 0;
         #ifdef PLOT_CURVATURE_DATA
             left_msg.data = 0;
         #endif
     }
     // Center Lane
     if(CenterLane.degree > 0) {
-        CenterLane.curvature = 1/(2*CenterLane.a);
-        curvature_array.data.push_back(CenterLane.curvature);
+       curvature_msg.center = 1/(2*CenterLane.a);
         #ifdef PLOT_CURVATURE_DATA
             center_msg.data = CenterLane.curvature;
         #endif
     }
     else {
-        curvature_array.data.push_back(0);
+        curvature_msg.center = 0;
         #ifdef PLOT_CURVATURE_DATA
             center_msg.data = 0;
         #endif
     }
     // Right Lane
     if(RightLane.degree > 0) {
-        RightLane.curvature = 1/(2*RightLane.a);
-        curvature_array.data.push_back(RightLane.curvature);
+        curvature_msg.right = 1/(2*RightLane.a);
         #ifdef PLOT_CURVATURE_DATA
             right_msg.data = RightLane.curvature;
         #endif
     }
     else {
-        curvature_array.data.push_back(0);
+        curvature_msg.right = 0;
         #ifdef PLOT_CURVATURE_DATA
             right_msg.data = 0;
         #endif

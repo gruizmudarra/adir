@@ -28,6 +28,8 @@ using namespace std;
 #include "nav_msgs/Odometry.h"
 #include "geometry_msgs/Pose2D.h"
 #include "std_msgs/String.h"
+#include "adir/curvature_t.h"
+#include "adir/enable_t.h"
 
 // Cartesian coordinates
 struct position_t {
@@ -37,20 +39,15 @@ struct position_t {
     position_t(double arg_x, double arg_y) : x(arg_x), y(arg_y) {}
 };
 
-struct curvature_t {
-    double left;
-    double center;
-    double right;
-};
+void callbackCurvData(const adir::curvature_t::ConstPtr& msg);
+void callbackOdomData(const nav_msgs::Odometry::ConstPtr& msg);
 
-
-void cb_curvData(const std_msgs::Float32MultiArray::ConstPtr& msg);
-void cb_odomData(const nav_msgs::Odometry::ConstPtr& msg);
-
-double get_distance(position_t p, position_t q);
-std::vector<position_t> define_intersection_nodes();
-void environment_classifier(std::vector<position_t> map);
-bool check_position(std::vector<position_t> map, int& node_id);
-string intersection_class(int node_id);
+double getDistance(position_t p, position_t q);
+std::vector<position_t> defineIntersectionNodes();
+bool checkPosition(std::vector<position_t> map, int& node_id);
+string intersectionClassifier(int node_id);
+void environmentClassifier(std::vector<position_t> map);
+int loop_rate;
+double lookahead;
 
 #endif

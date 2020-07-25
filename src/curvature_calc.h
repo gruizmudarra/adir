@@ -35,18 +35,20 @@ using namespace std;
 #include "std_msgs/Float32MultiArray.h"
 #include "std_msgs/Float32.h"
 
+#include "adir/curvature_t.h"
+
 struct polynomial_t {
     double a;
     double b;
     double c;
     int degree;
-    double curvature;
 };
 
-void cb_coefLeft(const std_msgs::Float32MultiArray::ConstPtr& msg);
-void cb_coefCenter(const std_msgs::Float32MultiArray::ConstPtr& msg);
-void cb_coefRight(const std_msgs::Float32MultiArray::ConstPtr& msg);
-void cb_degrees(const std_msgs::Int32MultiArray::ConstPtr& msg);
-void curvature_calculation();
+void callbackCoefLeft(const std_msgs::Float32MultiArray::ConstPtr& msg);
+void callbackCoefCenter(const std_msgs::Float32MultiArray::ConstPtr& msg);
+void callbackCoefRight(const std_msgs::Float32MultiArray::ConstPtr& msg);
+void callbackDegrees(const std_msgs::Int32MultiArray::ConstPtr& msg);
+void curvatureCalculation();
 
+int loop_rate;
 #endif

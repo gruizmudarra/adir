@@ -1,75 +1,69 @@
 #include "env_class.h"
-
-static const uint32_t LOOP_RATE = 50; // Hz
 static const uint32_t ODOM_QUEUE_SIZE = 1;
-static const uint32_t ENV_QUEUE_SIZE = 1000;
 static const uint32_t CURV_QUEUE_SIZE = 1000;
 
 static const uint32_t CURV_LIMIT = 300;
 
-curvature_t curvLane;
+adir::curvature_t curvLane;
 position_t vehicle_pose(0,0); 
 
-ros::Publisher env_pub;
-std_msgs::String env_msg;
+ros::Publisher tracking_pub;
+std_msgs::Bool tracking_msg;
 
-ros::Publisher node_pub;
-std_msgs::Int16 node_msg;
+ros::Publisher adir_pub;
+adir::enable_t adir_msg;
 
-ros::Publisher enable_pub;
-std_msgs::Bool enable_msg;
+ros::Publisher control_pub;
+std_msgs::Bool control_msg;
 
  int main (int argc, char **argv) {
     // Node info
     ros::init(argc, argv, "env_class");
 	ros::NodeHandle nh;
-    
+    // Parameters
+    nh.param<int>("/loop_rate", loop_rate, 50);
+    nh.param<double>("/lookahead", lookahead, 0.01);
     // Subcriptions
-    ros::Subscriber curv_sub = nh.subscribe("/curvature_calc/array", CURV_QUEUE_SIZE, cb_curvData);
-    ros::Subscriber odom_sub = nh.subscribe("/odom_ground_truth", ODOM_QUEUE_SIZE, cb_odomData);
+    ros::Subscriber curv_sub = nh.subscribe("/lane_curvature", CURV_QUEUE_SIZE, callbackCurvData);
+    ros::Subscriber odom_sub = nh.subscribe("/odom_ground_truth", ODOM_QUEUE_SIZE, callbackOdomData);
     
     // Publications
-    env_pub = nh.advertise<std_msgs::String>("/env_class", ENV_QUEUE_SIZE);
-    node_pub = nh.advertise<std_msgs::Int16>("/env_node", ENV_QUEUE_SIZE);
-    enable_pub = nh.advertise<std_msgs::Bool>("/enable_roundabout_planner", 1);
+    tracking_pub = nh.advertise<std_msgs::Bool>("/tracking_enable", 1000);
+    adir_pub = nh.advertise<adir::enable_t>("/adir_enable", 1000);
+    control_pub = nh.advertise<std_msgs::Bool>("/control_enable", 1000);
 
     // Define topologic map
-    std::vector<position_t> topologic_map = define_intersection_nodes();
+    std::vector<position_t> topologic_map = defineIntersectionNodes();
 
-    ros::Rate node_loop_rate(LOOP_RATE);
+    ros::Rate node_loop_rate(loop_rate);
 
     // Main loop
     while (ros::ok()) {
-        environment_classifier(topologic_map);
-        env_pub.publish(env_msg);
+        environmentClassifier(topologic_map);
         ros::spinOnce();
         node_loop_rate.sleep();
     }
     return 0;
  }
 
- void cb_curvData(const std_msgs::Float32MultiArray::ConstPtr& msg) {
-    std::vector<float> temp_data;
-    for (int i=0; i < msg-> data.size(); i++) {
-        temp_data.push_back(msg -> data[i]);
-    }
-    curvLane.left = temp_data[0];
-    curvLane.center = temp_data[1];
-    curvLane.right = temp_data[2];
+ void callbackCurvData(const adir::curvature_t::ConstPtr& msg) {
+    curvLane.left = msg -> left;
+    curvLane.center = msg -> center;
+    curvLane.right = msg -> right;
  }
 
- void cb_odomData(const nav_msgs::Odometry::ConstPtr& msg) {
+ void callbackOdomData(const nav_msgs::Odometry::ConstPtr& msg) {
      vehicle_pose.x = msg -> pose.pose.position.x;
      vehicle_pose.y = msg -> pose.pose.position.y; 
      //cout << "Vehicle pose -> x: " << vehicle_pose.x << " y: " << vehicle_pose.y << endl;
  }
 
-  double get_distance(position_t p, position_t q) {
+  double getDistance(position_t p, position_t q) {
      return sqrt((q.x - p.x)*(q.x - p.x)+(q.y - p.y)*(q.y - p.y));
  }
 
 // Define cartesian coordinates of the point to turn
-std::vector<position_t> define_intersection_nodes(){
+std::vector<position_t> defineIntersectionNodes(){
     // Cartesian coordinates matrix of each node
     std::vector<position_t> nodes_matrix;
     //Roundabout 
@@ -79,24 +73,24 @@ std::vector<position_t> define_intersection_nodes(){
     nodes_matrix.push_back(position_t(-2.37184,-5.291795)); //3
     nodes_matrix.push_back(position_t(2.0339,-5.9971));  //4
     //Exits
-    nodes_matrix.push_back(position_t(1.5667, -5.1082));  //5
-    nodes_matrix.push_back(position_t(-0.42097, -3.55602)); //6
-    nodes_matrix.push_back(position_t(-1.404672, -4.3537)); //7
-    nodes_matrix.push_back(position_t(0.99706, -6.35349));  //8
+    nodes_matrix.push_back(position_t(-1.9152,-2.8758)); //5
+    nodes_matrix.push_back(position_t(-2.3795,-4.8837)); //6
+    nodes_matrix.push_back(position_t(2.0279,-6.4677));  //7
+    nodes_matrix.push_back(position_t(2.3609,-4.0260));  //8
     //Curved Crossing 
     //Entries:
     nodes_matrix.push_back(position_t(-3.5204603672, 0.2)); //9
     nodes_matrix.push_back(position_t(-3.690855,-1.07504)); //10
     nodes_matrix.push_back(position_t(-4.87123,-1.58464717865)); //11
     //Exits:
-    nodes_matrix.push_back(position_t(-3.5204603672, -0.2)); // 15
-    nodes_matrix.push_back(position_t(-3.99613, -1.377046));    //16
-    nodes_matrix.push_back(position_t(-5.28350496292, -1.58464717865)); // 17
+    nodes_matrix.push_back(position_t(-3.5204603672, -0.2)); // 12
+    nodes_matrix.push_back(position_t(-3.99613, -1.377046));    //13
+    nodes_matrix.push_back(position_t(-5.28350496292, -1.58464717865)); // 14
     //Regular Crossing:
     //Entries:
-    nodes_matrix.push_back(position_t(-5.2882,-4.33024597168));   //12
-    nodes_matrix.push_back(position_t(-4.1720,-4.86417)); //13
-    nodes_matrix.push_back(position_t(-4.9159,-5.7948));   //14
+    nodes_matrix.push_back(position_t(-5.2882,-4.33024597168));   //15
+    nodes_matrix.push_back(position_t(-4.1720,-4.86417)); //16
+    nodes_matrix.push_back(position_t(-4.9159,-5.7948));   //17
     //Exits:
     nodes_matrix.push_back(position_t(-4.81341934204,-4.33024597168)); // 18
     nodes_matrix.push_back(position_t(-4.1720,-5.30747));  //19
@@ -105,107 +99,35 @@ std::vector<position_t> define_intersection_nodes(){
     return nodes_matrix;
 }
 
-string intersection_class(int node_id, int& node) {
+string intersectionClassifier(int node_id) {
     string s = "";
-    switch(node_id) {
-        case 1: 
-            s = "ROUNDABOUT ENTRY1"; 
-            node = 1;
-            break;
-        case 2: 
-            s = "ROUNDABOUT ENTRY2";
-            node = 2; 
-            break;
-        case 3: 
-            s = "ROUNDABOUT ENTRY3"; 
-            node = 3;
-            break;
-        case 4: 
-            s = "ROUNDABOUT ENTRY4"; 
-            node = 4;
-            break;
-
-        case 5: 
-            s = "ROUNDABOUT EXIT5"; 
-            node = 5;
-            break;
-        case 6: 
-            s = "ROUNDABOUT EXIT6"; 
-            node = 6;
-            break;
-        case 7: 
-            s = "ROUNDABOUT EXIT7";
-            node = 7; 
-            break;
-        case 8: 
-            s = "ROUNDABOUT EXIT8";
-            node = 8; 
-            break;
-        case 9: 
-            s = "CCROSSING ENTRY9";
-            node = 9; 
-            break;
-        case 10: 
-            s = "CCROSSING ENTRY10";
-            node = 10; 
-            break;
-        case 11: 
-            s = "CCROSSING ENTRY11";
-            node = 11; 
-            break;
-
-        case 12: 
-            s = "CCROSSING EXIT15";
-            node = 15; 
-            break;
-        case 13: 
-            s = "CCROSSING EXIT16";
-            node = 16; 
-            break;
-        case 14: 
-            s = "CCROSSING EXIT17";
-            node = 17; 
-            break;
-        case 15: 
-            s = "RCROSSING ENTRY12";
-            node = 12; 
-            break;
-        case 16: 
-            s = "RCROSSING ENTRY13";
-            node = 13; 
-            break;
-        case 17: 
-            s = "RCROSSING ENTRY14";
-            node = 14; 
-            break;
-
-        case 18: 
-            s = "RCROSSING EXIT18";
-            node = 18; 
-            break;
-        case 19: 
-            s = "RCROSSING EXIT19";
-            node = 19; 
-            break;
-        case 20: 
-            s = "RCROSSING EXIT20";
-            node = 20; 
-            break;
-        default: 
-            s = "UNKNOWN INTERSECTION";
-            node = 0; 
-            break;
+    if (node_id >= 1 && node_id <= 20) {
+        if (node_id >= 1 && node_id <=4) {
+            s = "ROUNDABOUT ENTRY"; 
+        }
+        else if (node_id >= 5 && node_id <=8) {
+            s = "ROUNDABOUT EXIT";
+        }
+        else if ((node_id >= 9 && node_id <=11) || (node_id >= 15 && node_id <=17)) {
+            s = "CROSSING ENTRY";
+        }
+        else {
+            s = "CROSSING EXIT";
+        }
+    }
+    else {
+       s = "UNKNOWN INTERSECTION";
     }
     return s;
 }
 
-bool check_position(std::vector<position_t> map, int& node_id) {
+bool checkPosition(std::vector<position_t> map, int& node_id) {
     position_t node(0,0);
     double dist;
     for(int i = 0; i < map.size(); i++) {
         node = map[i];
-        dist = get_distance(vehicle_pose,node);
-        if (dist <= 0.25) {
+        dist = getDistance(vehicle_pose,node);
+        if (dist <= lookahead) {
             node_id = i+1;
             return true;
         }
@@ -213,20 +135,49 @@ bool check_position(std::vector<position_t> map, int& node_id) {
     return false;
 }
 
-void environment_classifier(std::vector<position_t> map) {
+void environmentClassifier(std::vector<position_t> map) {
     string environment = "";
     int node_id;
     int node;
     // Checking if the car is near (0.25 m) of a intersection   
-    bool intersection = check_position(map,node_id); 
+    bool intersection = checkPosition(map,node_id); 
     
     // If it is near an intersection, get what node is in the topologic map
     if (intersection) {
-        environment = intersection_class(node_id, node);
-        node_msg.data = node;
-        node_pub.publish(node_msg);
-        enable_msg.data = true;
-        enable_pub.publish(enable_msg);       
+        environment = intersectionClassifier(node_id);
+        if(environment == "ROUNDABOUT ENTRY") {
+            // line_detection_fu deactivated
+            tracking_msg.data = false;
+            tracking_pub.publish(tracking_msg);
+            // roundabout_planner activated
+            adir_msg.roundabout = true;
+            adir_msg.crossing = false;
+            adir_msg.node_id = node_id;
+            adir_pub.publish(adir_msg);
+
+        }
+        else if (environment == "CROSSING ENTRY") {
+            // line_detection_fu deactivated
+            tracking_msg.data = false;
+            tracking_pub.publish(tracking_msg);
+            // roundabout_planner activated
+            adir_msg.roundabout = false;
+            adir_msg.crossing = true;
+            adir_msg.node_id = node_id;
+            adir_pub.publish(adir_msg);
+        }
+        else if ((environment == "ROUNDABOUT EXIT") || (environment == "CROSSING EXIT")) {
+            // car_controller and roundabout_planner/crossing_planner deactivated
+            control_msg.data = false;     
+            control_pub.publish(control_msg);       
+            adir_msg.roundabout = false;
+            adir_msg.crossing = false;
+            adir_msg.node_id = node_id;
+            adir_pub.publish(adir_msg);
+            // line_detection_fu activated
+            tracking_msg.data = true;
+            tracking_pub.publish(tracking_msg);
+        }
     }
     // If it is no near a intersection, check curvature to check if the car is in a straight or curved road
     else {
@@ -254,6 +205,4 @@ void environment_classifier(std::vector<position_t> map) {
             }
         }
     }
-    //cout << environment << "\n";
-    env_msg.data = environment;
 }

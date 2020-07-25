@@ -26,6 +26,9 @@ using namespace std;
 #include "visualization_msgs/Marker.h"
 #include "geometry_msgs/Point.h"
 
+#include "adir/enable_t.h"
+#include "adir/point2D.h"
+
 #define PRINT_MARKERS
 
 // Cartesian coordinates
@@ -39,24 +42,25 @@ struct position_t {
 enum maneuver_state_t {IDLE, DEFINITION_STATE, ENTRY_STATE, CIRCULATION_STATE, EXIT_STATE};
 
 // Subscription callbacks
-void cb_odomData(const nav_msgs::Odometry::ConstPtr& msg);
-void cb_envData(const std_msgs::String::ConstPtr& msg);
-void cb_enableData(const std_msgs::Bool::ConstPtr& msg);
-void cb_nodeData(const std_msgs::Int16::ConstPtr& msg);
+void callbackOdomData(const nav_msgs::Odometry::ConstPtr& msg);
+void callbackADIRData(const adir::enable_t::ConstPtr& msg);
 
 // Bezier curves calculation
-double bezier_linear_scalar(double a, double b, double t);
-position_t bezier_linear(position_t P, position_t Q, double t);
-position_t bezier_quartic(position_t P, position_t Q, position_t R, position_t S, position_t U, double t);
+double bezierLinearScalar(double a, double b, double t);
+position_t bezierLinear(position_t P, position_t Q, double t);
+position_t bezierQuartic(position_t P, position_t Q, position_t R, position_t S, position_t U, double t);
 position_t circunference(position_t P, position_t c, double r, double t);
 // 
-double get_distance(position_t p, position_t q);
-position_t get_vector(position_t p, position_t q);
-position_t get_unit_vector(position_t p, position_t q);
+double getDistance(position_t p, position_t q);
+position_t getVector(position_t p, position_t q);
+position_t getUnitVector(position_t p, position_t q);
 
-void select_restriction_points();
-void define_control_points();
-void print_markers();
-void print_reference(position_t point);
-void roundabout_reference_generator();
+void selectRestrictionPoints();
+void defineControlPoints();
+void printMarkers();
+void printReference(position_t point);
+void roundaboutReferenceGenerator();
+
+int loop_rate;
+double lookahead;
 #endif

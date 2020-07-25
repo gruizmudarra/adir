@@ -1,16 +1,15 @@
 #include "car_controller.h"
 
-static const uint32_t LOOP_RATE = 50; // Hz
-
 ros::Publisher speed_pub;
 std_msgs::Int16 speed_msg;
 
 ros::Publisher steering_pub;
 std_msgs::UInt8 steering_msg;
 
-geometry_msgs::Point reference;
+position_t reference(0,0);
 quaternion_t quat;
 double roll, pitch, yaw;
+
 
 car_state_t car;
 
@@ -27,15 +26,18 @@ int main (int argc, char **argv) {
     // Node info
     ros::init(argc, argv, "car_controller");
 	ros::NodeHandle nh;
+    // Parameters
+    nh.param<int>("/loop_rate", loop_rate,50);
+
     // Subscriptions
-    ros::Subscriber reference_sub = nh.subscribe("/reference", 1000, cb_referenceData);
-    ros::Subscriber yaw_sub = nh.subscribe("/odom_ground_truth", 1, cb_odomData);
-    ros::Subscriber enable_control_sub = nh.subscribe("/enable_car_control", 1, cb_enable_controlData);
+    ros::Subscriber reference_sub = nh.subscribe("/reference", 1000, callbackReferenceData);
+    ros::Subscriber yaw_sub = nh.subscribe("/odom_ground_truth", 1, callbackOdomData);
+    ros::Subscriber enable_control_sub = nh.subscribe("/control_enable", 1, callbackEnableControlData);
     // Publications
     speed_pub = nh.advertise<std_msgs::Int16>("/manual_control/speed", 1000);
     steering_pub = nh.advertise<std_msgs::UInt8>("/steering", 1000);
     // Loop rate
-    ros::Rate node_loop_rate(LOOP_RATE);
+    ros::Rate node_loop_rate(loop_rate);
 
     while (ros::ok()) {
         if (enable_orientation_control) {
@@ -48,12 +50,11 @@ int main (int argc, char **argv) {
     return 0;
 }
 
-void cb_referenceData(const geometry_msgs::Point::ConstPtr& msg) {
+void callbackReferenceData(const adir::point2D::ConstPtr& msg) {
     reference.x = msg -> x;
     reference.y = msg -> y;
-    reference.z = msg -> z;
 }
-void cb_odomData(const nav_msgs::Odometry::ConstPtr& msg) {
+void callbackOdomData(const nav_msgs::Odometry::ConstPtr& msg) {
     car.x = msg -> pose.pose.position.x;
     car.y = msg -> pose.pose.position.y;
     car.v = msg -> twist.twist.linear.x;
@@ -69,7 +70,7 @@ void cb_odomData(const nav_msgs::Odometry::ConstPtr& msg) {
     car.theta_deg = car.theta * (180/M_PI);
 }
 
-void cb_enable_controlData(const std_msgs::Bool::ConstPtr& msg) {
+void callbackEnableControlData(const std_msgs::Bool::ConstPtr& msg) {
     enable_orientation_control = msg -> data;
 }
 

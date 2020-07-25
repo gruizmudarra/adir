@@ -1,3 +1,5 @@
+#ifndef CAR_CONTROLLER_H
+#define CAR_CONTROLLER_H
 #include "ros/ros.h"
 #include "iostream"
 using namespace std;
@@ -10,6 +12,8 @@ using namespace std;
 #include "nav_msgs/Odometry.h"
 #include "geometry_msgs/Quaternion.h"
 #include "tf/transform_datatypes.h"
+
+#include "adir/point2D.h"
 
 // Cartesian coordinates
 struct position_t {
@@ -35,10 +39,13 @@ struct quaternion_t {
     double w;
 };
 
-void cb_referenceData(const geometry_msgs::Point::ConstPtr& msg);
-void cb_odomData(const nav_msgs::Odometry::ConstPtr& msg);
-void cb_enable_controlData(const std_msgs::Bool::ConstPtr& msg);
+void callbackReferenceData(const adir::point2D::ConstPtr& msg);
+void callbackOdomData(const nav_msgs::Odometry::ConstPtr& msg);
+void callbackEnableControlData(const std_msgs::Bool::ConstPtr& msg);
 uint8_t saturationU8(int a);
 int16_t saturation16(int a);
 void orientationControl();
 void speedControl();
+
+int loop_rate;
+#endif
