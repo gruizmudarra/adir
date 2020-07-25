@@ -4,8 +4,8 @@ static const uint32_t ODOM_QUEUE_SIZE = 1;
 static const uint32_t ENV_QUEUE_SIZE = 1;
 static const uint32_t ENABLE_QUEUE_SIZE = 1;
 
-position_t vehicle_pose(0,0), reference(0,0);
-
+position_t vehicle_pose(0,0);
+position_t reference(0,0);
 string environment = "";
 bool enable_roundabout_planner = false;
 int node_entry = 0;
@@ -325,7 +325,7 @@ void print_reference(position_t point) {
 
 void publishReference(position_t r) {
     #ifdef PRINT_MARKERS 
-    print_reference(reference);
+    print_reference(r);
     #endif
     reference_msg.x = r.x;
     reference_msg.y = r.y;
@@ -353,12 +353,12 @@ void roundaboutReferenceGenerator() {
             publishReference(reference);
             if (getDistance(vehicle_pose, reference) < lookahead) {
                 t+= 0.025;
-                cout << "New reference generated. t = " << t << "\n";
+                // cout << "New reference generated. t = " << t << "\n";
             }
             if(getDistance(vehicle_pose,p4) < lookahead || t > 1) {
                 t = 0;
                 maneuver_state = CIRCULATION_STATE;
-                cout << "Circulating inside the roundabout... \n";
+                cout << "Circulating inside the roundabout...\n";
             }
             break;
         case CIRCULATION_STATE:
@@ -366,12 +366,12 @@ void roundaboutReferenceGenerator() {
             publishReference(reference);
             if (getDistance(vehicle_pose, reference) < lookahead) {
                 t+= 0.02;
-                cout << "New reference generated. \n" << "t = " << t << "\n";
+                // cout << "New reference generated. \n" << "t = " << t << "\n";
             }
             if(getDistance(vehicle_pose,p5) < lookahead) {
                 t = 0;
                 maneuver_state = EXIT_STATE;
-                cout << "Exiting roundabout... \n";
+                cout << "Exiting roundabout...\n";
             }
             break;
         case EXIT_STATE:
@@ -379,19 +379,20 @@ void roundaboutReferenceGenerator() {
             publishReference(reference);
             if (getDistance(vehicle_pose, reference) < lookahead) {
                 t+= 0.025;
-                cout << "New reference generated. \n"<< "t = " << t << "\n";
+                // cout << "New reference generated. \n"<< "t = " << t << "\n";
             }
             if(getDistance(vehicle_pose,p9) < lookahead || t > 1) {
                 t = 0.1;
-                maneuver_state = IDLE;
-                cout << "Maneuver finished. \n";
+                maneuver_state = IDLE_STATE;
             }
             break;
-        case IDLE:
-            enable_roundabout_planner = false;
-            control_points_defined = false;
-            maneuver_state = DEFINITION_STATE;
-            cout << "Roundabout planner disabled. \n";
-        break;
+        case IDLE_STATE:
+                cout << "Maneuver finished.\n";
+                maneuver_state = DEFINITION_STATE;
+                enable_roundabout_planner = false;
+                enable_control_msg.data = false;
+                enable_control_pub.publish(enable_control_msg);
+                cout << "Roundabout planner disabled.\n";
+            break;
     }
 }

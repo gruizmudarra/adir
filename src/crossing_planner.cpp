@@ -4,8 +4,8 @@ static const uint32_t ODOM_QUEUE_SIZE = 1;
 static const uint32_t ENV_QUEUE_SIZE = 1;
 static const uint32_t ENABLE_QUEUE_SIZE = 1;
 
-position_t vehicle_pose(0,0), reference(0,0);
-
+position_t vehicle_pose(0,0);
+position_t reference(0,0);
 string environment = "";
 bool enable_crossing_planner = false;
 int node_entry = 0;
@@ -13,8 +13,8 @@ int node_exit = 0;
 double t = 0.1;
 maneuver_state_t maneuver_state = DEFINITION_STATE;
 position_t r0(0,0), r1(0,0), r2(0,0), i1(0,0), i2(0,0), i3(0,0), i4(0,0);
+double l1;
 position_t p0(0,0), p1(0,0), p2(0,0), p3(0,0), p4(0,0);
-bool control_points_defined = false;
 
 
 #ifdef PRINT_MARKERS
@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
     ros::Subscriber adir_sub = nh.subscribe("/adir_enable", 1, callbackADIRData);
     // Publications
     #ifdef PRINT_MARKERS
-    marker_pub = nh.advertise<visualization_msgs::Marker>("/control_points_marker", 20);
+    marker_pub = nh.advertise<visualization_msgs::Marker>("/control_points_marker", 1000);
     #endif
     reference_pub = nh.advertise<adir::point2D>("/reference",1000);
     enable_control_pub = nh.advertise<std_msgs::Bool>("/control_enable", 1000);
@@ -172,12 +172,19 @@ position_t getUnitVector(position_t p, position_t q) {
             i4 = position_t(-3.9933,-0.4689);
             r0 = position_t(-3.9648,-0.5100);
             r2 = position_t(-3.0611,-0.20);
+            l1 = -1*getDistance(i1,i2)/3;
             break;
         case 13: 
             i3 = position_t(-4.2772,-0.7886);
             i4 = position_t(-4.6049,-1.0619);
-            if (node_entry == 9){r0 = position_t(-3.9648,-0.5100);}
-            else {r0 = position_t(-4.6046,-1.0749);}
+            if (node_entry == 9) {
+                r0 = position_t(-3.9648,-0.5100);
+                l1 = getDistance(i1,i2)+ getDistance(i1,i2)/3;
+            }
+            else {
+                r0 = position_t(-4.6046,-1.0749);
+                l1 = -1*getDistance(i1,i2)/3;
+            }
             r2 = position_t(-3.6448,-1.7255);
             break;
         case 14: 
@@ -185,19 +192,27 @@ position_t getUnitVector(position_t p, position_t q) {
             i4 = position_t(-5.4006,-0.8654);
             r0 = position_t(-4.6046,-1.0749);
             r2 = position_t(-5.2838,-2.0571);
+            l1 = getDistance(i1,i2)+ getDistance(i1,i2)/3;
             break;
         // Regular crossing
-        case 18: 
+        case 18: // right turn 
             i3 = position_t(-5.0695,-4.6454);
             i4 = position_t(-4.6459,-4.6512);
             r0 = position_t(-4.6506,-4.6488);
             r2 = position_t(-4.8383,-3.5583);
+            l1 = -1*getDistance(i1,i2)/3;
             break;
         case 19: 
             i3 = position_t(-4.6651,-5.0687);
             i4 = position_t(-4.6496,-5.5033);
-            if (node_entry == 15){r0 = position_t(-4.6506,-4.6488);}
-            else {r0 = position_t(-4.6447,-5.4963);}
+            if (node_entry == 15) {
+                r0 = position_t(-4.6506,-4.6488);
+                l1 = getDistance(i1,i2)+ getDistance(i1,i2)/5;
+            }
+            else {
+                r0 = position_t(-4.6447,-5.4963);
+                l1 = -1*getDistance(i1,i2)/3;
+            }
             r2 = position_t(-3.4673,-5.2620);
             break;
         case 20: 
@@ -205,6 +220,7 @@ position_t getUnitVector(position_t p, position_t q) {
             i4 = position_t(-5.4883,-5.4876);
             r0 = position_t(-4.6447,-5.4963);
             r2 = position_t(-5.2865,-6.5681);
+            l1 = getDistance(i1,i2)+ getDistance(i1,i2)/3;
             break;
         default: 
             cout << "Exception on exit node. \n";
@@ -216,22 +232,26 @@ position_t getUnitVector(position_t p, position_t q) {
 
  void defineControlPoints() {
     cout << "Defining control points. \n";    
-
-    p0 = vehicle_pose;
+    p0 = r1;
     p4 = r2;
-
-    double l1 = getDistance(i2,i1)/3;
-    p1 = position_t(i2.x + l1*getUnitVector(i1,i2).x,i2.y + l1*getUnitVector(i1,i2).y);
+    p1 = position_t(i1.x + l1*getUnitVector(i1,i2).x,i1.y + l1*getUnitVector(i1,i2).y);
     // p2 = i1 + l2*getUnitVector(i2,i1)
     double l3 = getDistance(i4,i3)/2;
-    p3 = position_t(i4.x + l3*getUnitVector(i4,i3).x, i4.y + l3*getUnitVector(i4,i3).y);
-    // p2 is calculated from the arc of the circunference l4 that separates vectors r0r1 and r0p4
-    double l2 = 0.5;
-    double arc = getDistance(r0,i2);
-    double phi = l2/arc;
-    p2 = position_t(arc*cos(atan2(i2.y-r0.y,i2.x-r0.x)+phi)+r0.x, 
-                    arc*sin(atan2(i2.y-r0.y,i2.x-r0.x)+phi)+r0.y);
-
+    p3 = position_t(i3.x + l3*getUnitVector(i3,i4).x, i3.y + l3*getUnitVector(i3,i4).y);
+    if((node_entry == 17 && node_exit == 19) || (node_entry == 11 && node_exit == 13) || node_exit == 18 || node_exit == 12) {
+        double l2 = 0.6;
+        double arc = getDistance(r0,i3);
+        double phi = l2/arc;
+        p2 = position_t(arc*cos(atan2(i3.y-r0.y,i3.x-r0.x)+phi)+r0.x, 
+                        arc*sin(atan2(i3.y-r0.y,i3.x-r0.x)+phi)+r0.y);
+    }
+    else {
+        double l2 = 0.6;
+        double arc = getDistance(r0,i4);
+        double phi = l2/arc;
+        p2 = position_t(arc*cos(atan2(i4.y-r0.y,i4.x-r0.x)-phi)+r0.x, 
+                        arc*sin(atan2(i4.y-r0.y,i4.x-r0.x)-phi)+r0.y);
+    }
  }
 
 #ifdef PRINT_MARKERS
@@ -324,7 +344,7 @@ void print_reference(position_t point) {
 
 void publishReference(position_t r) {
     #ifdef PRINT_MARKERS 
-    print_reference(reference);
+    print_reference(r);
     #endif
     reference_msg.x = r.x;
     reference_msg.y = r.y;
@@ -337,6 +357,11 @@ void crossingReferenceGenerator() {
             cout << "Crossing planner initialized. \n";
             selectRestrictionPoints();
             defineControlPoints();
+            cout << "P0 = (" << p0.x << ", " << p0.y << ")\n";
+            cout << "P1 = (" << p1.x << ", " << p1.y << ")\n";
+            cout << "P2 = (" << p2.x << ", " << p2.y << ")\n";
+            cout << "P3 = (" << p3.x << ", " << p3.y << ")\n";
+            cout << "P4 = (" << p4.x << ", " << p4.y << ")\n";
             #ifdef PRINT_MARKERS
             print_markers();
             #endif
@@ -352,19 +377,20 @@ void crossingReferenceGenerator() {
             publishReference(reference);
             if (getDistance(vehicle_pose, reference) < lookahead) {
                 t+= 0.025;
-                cout << "New reference generated. t = " << t << "\n";
+                // cout << "New reference generated. t = " << t << "\n";
             }
             if(getDistance(vehicle_pose,p4) < lookahead || t > 1) {
                 t = 0;
-                maneuver_state = IDLE;
-                cout << "Maneuver finished... \n";
+                maneuver_state = IDLE_STATE;
             }
             break;
-        case IDLE:
-            enable_crossing_planner = false;
-            control_points_defined = false;
-            maneuver_state = DEFINITION_STATE;
-            cout << "Crossing planner disabled. \n";
-        break; 
+        case IDLE_STATE:
+                cout << "Maneuver finished... \n";
+                maneuver_state = DEFINITION_STATE;
+                enable_crossing_planner = false;
+                enable_control_msg.data = false;
+                enable_control_pub.publish(enable_control_msg);
+                cout << "Crossing planner disabled. \n";
+            break;
     }
 }

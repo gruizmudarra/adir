@@ -39,7 +39,7 @@ struct position_t {
     position_t(double arg_x, double arg_y) : x(arg_x), y(arg_y) {}
 };
 
-enum maneuver_state_t {IDLE, DEFINITION_STATE, ENTRY_STATE, CIRCULATION_STATE, EXIT_STATE};
+enum maneuver_state_t {IDLE_STATE, DEFINITION_STATE, ENTRY_STATE, CIRCULATION_STATE, EXIT_STATE};
 
 // Subscription callbacks
 void callbackOdomData(const nav_msgs::Odometry::ConstPtr& msg);

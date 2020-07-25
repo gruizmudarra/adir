@@ -173,7 +173,7 @@ void environmentClassifier(std::vector<position_t> map) {
             speed_msg.data = 0;
             speed_pub.publish(speed_msg);
             // asks where you wanna go since it doesn't have global planification
-            cout << "You are right now in the entry node " << node_id << " of a crossing.\n";
+            cout << "You are right now in the entry node (" << node_id << ") of a crossing.\n";
             int node_exit;
             cout << "Insert exit node: \n" ;
             cin >> node_exit;
@@ -209,14 +209,7 @@ void environmentClassifier(std::vector<position_t> map) {
             }
             inside_crossing = true;
         }
-        else if ((environment == "ROUNDABOUT EXIT") || (environment == "CROSSING EXIT")) {
-            // car_controller and roundabout_planner/crossing_planner deactivated
-            control_msg.data = false;     
-            control_pub.publish(control_msg);       
-            adir_msg.roundabout = false;
-            adir_msg.crossing = false;
-            adir_msg.node_entry = node_id;
-            adir_pub.publish(adir_msg);
+        else if ((environment == "ROUNDABOUT EXIT") || (environment == "CROSSING EXIT")) {   
             // line_detection_fu activated
             tracking_msg.data = true;
             tracking_pub.publish(tracking_msg);
