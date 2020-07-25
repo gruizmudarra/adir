@@ -1,8 +1,8 @@
 /*
- Node: roundabout_planner 
+ Node: crossing_planner 
  Author: German Ruiz Mudarra, July 2020
 
- Description: Roundabout environment path planning.
+ Description: Crossing environment path planning.
     
  Subscriptions:
 
@@ -10,8 +10,8 @@
  Publications:
 
  */
-#ifndef ROUNDABOUT_PLANNER_H
-#define ROUNDABOUT_PLANNER_H
+#ifndef CROSSING_PLANNER_H
+#define CROSSING_PLANNER_H
 #include "ros/ros.h"
 
 #include "iostream"
@@ -39,7 +39,7 @@ struct position_t {
     position_t(double arg_x, double arg_y) : x(arg_x), y(arg_y) {}
 };
 
-enum maneuver_state_t {IDLE, DEFINITION_STATE, ENTRY_STATE, CIRCULATION_STATE, EXIT_STATE};
+enum maneuver_state_t {IDLE, DEFINITION_STATE, CIRCULATION_STATE};
 
 // Subscription callbacks
 void callbackOdomData(const nav_msgs::Odometry::ConstPtr& msg);
@@ -60,7 +60,7 @@ void defineControlPoints();
 void printMarkers();
 void printReference(position_t point);
 void publishReference(position_t r);
-void roundaboutReferenceGenerator();
+void crossingReferenceGenerator();
 
 int loop_rate;
 double lookahead;

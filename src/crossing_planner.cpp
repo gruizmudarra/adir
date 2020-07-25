@@ -1,4 +1,4 @@
-#include "roundabout_planner.h"
+#include "crossing_planner.h"
 
 static const uint32_t ODOM_QUEUE_SIZE = 1;
 static const uint32_t ENV_QUEUE_SIZE = 1;
@@ -7,15 +7,14 @@ static const uint32_t ENABLE_QUEUE_SIZE = 1;
 position_t vehicle_pose(0,0), reference(0,0);
 
 string environment = "";
-bool enable_roundabout_planner = false;
+bool enable_crossing_planner = false;
 int node_entry = 0;
 int node_exit = 0;
 double t = 0.1;
 maneuver_state_t maneuver_state = DEFINITION_STATE;
-position_t r0(0,-5.1), r1(0,0), r2(0,0), i1(0,0), i2(0,0), i3(0,0), i4(0,0);
-position_t p0(0,0), p1(0,0), p2(0,0), p3(0,0), p4(0,0), p5(0,0), p6(0,0), p7(0,0), p8(0,0), p9(0,0);
+position_t r0(0,0), r1(0,0), r2(0,0), i1(0,0), i2(0,0), i3(0,0), i4(0,0);
+position_t p0(0,0), p1(0,0), p2(0,0), p3(0,0), p4(0,0);
 bool control_points_defined = false;
-static const double TRANSIT_RADIUS = 1.6; // Distance between road and center of the roundabout
 
 
 #ifdef PRINT_MARKERS
@@ -33,7 +32,7 @@ std_msgs::Bool enable_control_msg;
 
 int main(int argc, char **argv) {
     // Node info
-    ros::init(argc, argv, "roundabout_planner");
+    ros::init(argc, argv, "crossing_planner");
 	ros::NodeHandle nh;
     
     // Parameters
@@ -54,8 +53,8 @@ int main(int argc, char **argv) {
     ros::Rate node_loop_rate(loop_rate);
 
     while (ros::ok()) {
-        if (enable_roundabout_planner) {
-            roundaboutReferenceGenerator();
+        if (enable_crossing_planner) {
+            crossingReferenceGenerator();
         }
         ros::spinOnce();
         node_loop_rate.sleep();
@@ -68,7 +67,7 @@ int main(int argc, char **argv) {
  }
 
 void callbackADIRData(const adir::enable_t::ConstPtr& msg) {
-    enable_roundabout_planner = msg -> roundabout;
+    enable_crossing_planner = msg -> crossing;
     node_entry = msg -> node_entry;
     node_exit = msg -> node_exit;
 }
@@ -132,24 +131,34 @@ position_t getUnitVector(position_t p, position_t q) {
 
 
  void selectRestrictionPoints() {
-     // Choose geometric points of the roundabout depending on the entry/exit
+     // Choose geometric points of the crossing depending on the entry/exit
     r1 = vehicle_pose;
     switch(node_entry){
-        case 1: 
-            i1 = position_t(1.5932,-4.2102);
-            i2 = position_t(1.3563,-3.8505);
+        // Curved crossing
+        case 9: 
+            i1 = position_t(-4.3139,-0.1492);
+            i2 = position_t(-4.6042,0.1722);
             break;
-        case 2:
-            i1 = position_t(-1.2862,-3.8050);
-            i2 = position_t(-1.5516,-4.1224);
+        case 10:
+            i1 = position_t(-4.2772,-0.7886);
+            i2 = position_t(-3.9648,-0.5100);
             break;
-        case 3: 
-            i1 = position_t(-1.8500,-5.0816);
-            i2 = position_t(-1.7652,-5.5090);
+        case 11: 
+            i1 = position_t(-4.9182,-0.7556);
+            i2 = position_t(-4.6046,-1.0749);
             break;
-        case 4: 
-            i1 = position_t(1.5921,-5.9507);
-            i2 = position_t(1.7551,-5.5638);
+        // Regular crossing
+        case 15: 
+            i1 = position_t(-5.0695,-4.6454);
+            i2 = position_t(-5.5000,-4.5650);
+            break;
+        case 16: 
+            i1 = position_t(-4.6651,-5.0687);
+            i2 = position_t(-4.6506,-4.6488);
+            break;
+        case 17: 
+            i1 = position_t(-5.0717,-5.5027);
+            i2 = position_t(-4.6447,-5.4963);
             break;
         default: 
             cout << "Exception on entry node. \n";
@@ -157,25 +166,45 @@ position_t getUnitVector(position_t p, position_t q) {
     }
     cout << "Restriction points of the entry created. \n";
     switch(node_exit){
-        case 5:
-            i3 = position_t(-1.2862,-3.8050);
-            i4 = position_t(-0.9478,-3.5434);
-            r2 = position_t(-1.9152,-2.8758);
+        // Curved crossing
+        case 12:
+            i3 = position_t(-4.3139,-0.1492);
+            i4 = position_t(-3.9933,-0.4689);
+            r0 = position_t(-3.9648,-0.5100);
+            r2 = position_t(-3.0611,-0.20);
             break;
-        case 6: 
-            i3 = position_t(-1.8500,-5.0816);
-            i4 = position_t(-1.7707,-4.6651);
-            r2 = position_t(-2.9942,-4.8727);
+        case 13: 
+            i3 = position_t(-4.2772,-0.7886);
+            i4 = position_t(-4.6049,-1.0619);
+            if (node_entry == 9){r0 = position_t(-3.9648,-0.5100);}
+            else {r0 = position_t(-4.6046,-1.0749);}
+            r2 = position_t(-3.6448,-1.7255);
             break;
-        case 7: 
-            i3 = position_t(1.5921,-5.9507);
-            i4 = position_t(1.3464,-6.2988);
-            r2 = position_t(2.42829,-6.6881);
+        case 14: 
+            i3 = position_t(-4.9182,-0.7556);
+            i4 = position_t(-5.4006,-0.8654);
+            r0 = position_t(-4.6046,-1.0749);
+            r2 = position_t(-5.2838,-2.0571);
             break;
-        case 8: 
-            i3 = position_t(1.5932,-4.2102);
-            i4 = position_t(1.7583,-4.6069);
-            r2 = position_t(2.6465,-3.8140);
+        // Regular crossing
+        case 18: 
+            i3 = position_t(-5.0695,-4.6454);
+            i4 = position_t(-4.6459,-4.6512);
+            r0 = position_t(-4.6506,-4.6488);
+            r2 = position_t(-4.8383,-3.5583);
+            break;
+        case 19: 
+            i3 = position_t(-4.6651,-5.0687);
+            i4 = position_t(-4.6496,-5.5033);
+            if (node_entry == 15){r0 = position_t(-4.6506,-4.6488);}
+            else {r0 = position_t(-4.6447,-5.4963);}
+            r2 = position_t(-3.4673,-5.2620);
+            break;
+        case 20: 
+            i3 = position_t(-5.0717,-5.5027);
+            i4 = position_t(-5.4883,-5.4876);
+            r0 = position_t(-4.6447,-5.4963);
+            r2 = position_t(-5.2865,-6.5681);
             break;
         default: 
             cout << "Exception on exit node. \n";
@@ -187,46 +216,22 @@ position_t getUnitVector(position_t p, position_t q) {
 
  void defineControlPoints() {
     cout << "Defining control points. \n";    
-    // Entry control points
-    // p0 = r0 + l0*getUnitVector(r0,r1)
-    double l0 = getDistance(r0, r1);
-    p0 = position_t(r0.x + l0*getUnitVector(r0,r1).x,r0.y + l0*getUnitVector(r0,r1).y);
-    
-    // p1 = r0 + l1*getUnitVector(r0,r1)
-    double l1 = 0.85*l0;
-    p1 = position_t(r0.x + l1*getUnitVector(r0,r1).x,r0.y + l1*getUnitVector(r0,r1).y);
+
+    p0 = vehicle_pose;
+    p4 = r2;
+
+    double l1 = getDistance(i2,i1)/3;
+    p1 = position_t(i2.x + l1*getUnitVector(i1,i2).x,i2.y + l1*getUnitVector(i1,i2).y);
     // p2 = i1 + l2*getUnitVector(i2,i1)
-    double l2 =0.2;
-    p2 = position_t(i1.x + l2*getUnitVector(i2,i1).x,i1.y + l2*getUnitVector(i2,i1).y);
-    // p4 is calculated from the arc of the circunference l4 that separates vectors r0r1 and r0p4
-    double l4 = 0.5;
-    double phi_entry = l4/TRANSIT_RADIUS;
-    p4 = position_t(TRANSIT_RADIUS*cos(atan2(r1.y-r0.y,r1.x-r0.x)+phi_entry)+r0.x, TRANSIT_RADIUS*sin(atan2(r1.y-r0.y,r1.x-r0.x)+phi_entry)+r0.y);
-    // p3 = p4+l3*T. T is the tangent vector to the transit circunference p4
-    position_t normal_entry = getUnitVector(p4,r0);
-    position_t tangent_entry(normal_entry.y, -1*normal_entry.x); 
-    double l3 = 0.2;
-    p3 = position_t(p4.x + l3*tangent_entry.x, p4.y + l3*tangent_entry.y);
-    // Exit control points (simetric to the entry calculation)
-    // p4 is calculated from the arc of the circunference l5 that separates vectors r0r2 and r0p5
-    double l5 = l4;
-    double phi_exit = l5/TRANSIT_RADIUS;
-    p5 = position_t(TRANSIT_RADIUS*cos(atan2(r2.y-r0.y,r2.x-r0.x)-phi_exit)+r0.x,TRANSIT_RADIUS*sin(atan2(r2.y-r0.y,r2.x-r0.x)-phi_exit)+r0.y);
-    // p6 = p5+l6*T. T is the tangent vector to the transit circunference p5
-    position_t normal_exit = getUnitVector(p5,r0);
-    position_t tangent_exit(normal_exit.y, -1*normal_exit.x); 
-    double l6 = l3;
-    p6 = position_t(p5.x + l6*tangent_exit.x, p5.y + l6*tangent_exit.y);
-    // p7 = i3 + l7*getUnitVector(i4,i3)
-    double l7 = 0.10;
-    p7 = position_t(i3.x + l7*getUnitVector(i4,i3).x, i3.y + l7*getUnitVector(i4,i3).y);
-    // p8 = r2 + l8*getUnitVector(r0,r2)
-    double l9 = getDistance(r0,r2);
-    p9 = position_t(r0.x + l9*getUnitVector(r0,r2).x, r0.y + l9*getUnitVector(r0,r2).y);
-    // p9 = r0 + l9*getUnitVector(r0,r2)
-    double l8 = 0.85*l9;
-    p8 = position_t(r0.x + l8*getUnitVector(r0,r2).x, r0.y + l8*getUnitVector(r0,r2).y);
-    control_points_defined = true;    
+    double l3 = getDistance(i4,i3)/2;
+    p3 = position_t(i4.x + l3*getUnitVector(i4,i3).x, i4.y + l3*getUnitVector(i4,i3).y);
+    // p2 is calculated from the arc of the circunference l4 that separates vectors r0r1 and r0p4
+    double l2 = 0.5;
+    double arc = getDistance(r0,i2);
+    double phi = l2/arc;
+    p2 = position_t(arc*cos(atan2(i2.y-r0.y,i2.x-r0.x)+phi)+r0.x, 
+                    arc*sin(atan2(i2.y-r0.y,i2.x-r0.x)+phi)+r0.y);
+
  }
 
 #ifdef PRINT_MARKERS
@@ -271,8 +276,8 @@ void print_markers() {
     }
 
     geometry_msgs::Point q;
-    position_t control_points_vector[] = {p0, p1, p2, p3, p4, p5, p6, p7, p8, p9};
-    for(int kk = 0; kk <= 9; kk++) {
+    position_t control_points_vector[] = {p0, p1, p2, p3, p4};
+    for(int kk = 0; kk <= 4; kk++) {
         std_msgs::ColorRGBA c;
         switch(kk) {
             case 0: c.g = 0.2; break;
@@ -280,12 +285,6 @@ void print_markers() {
             case 2: c.g = 0.6; break;
             case 3: c.g = 0.8; break;
             case 4: c.g = 1.0; break;
-
-            case 5: c.b = 0.2; break;
-            case 6: c.b = 0.4; break;
-            case 7: c.b = 0.6; break;
-            case 8: c.b = 0.8; break;
-            case 9: c.b = 1.0; break;
         }
         c.a = 1.0;
         q.x = control_points_vector[kk].x; q.y = control_points_vector[kk].y; q.z = 0.25;
@@ -332,23 +331,23 @@ void publishReference(position_t r) {
     reference_pub.publish(reference_msg);
 }
 
-void roundaboutReferenceGenerator() {
+void crossingReferenceGenerator() {
     switch (maneuver_state) {
         case DEFINITION_STATE:
-            cout << "Roundabout planner initialized. \n";
+            cout << "Crossing planner initialized. \n";
             selectRestrictionPoints();
             defineControlPoints();
             #ifdef PRINT_MARKERS
             print_markers();
             #endif
-            maneuver_state = ENTRY_STATE;
-            cout << "Starting entrance... \n";
+            maneuver_state = CIRCULATION_STATE;
+            cout << "Circulation inside the crossing... \n";
             enable_control_msg.data = true;
             enable_control_pub.publish(enable_control_msg);
             speed_msg.data = 50;
             speed_pub.publish(speed_msg);
         break;
-        case ENTRY_STATE:
+        case CIRCULATION_STATE:
             reference = bezierQuartic(p0,p1,p2,p3,p4,t);
             publishReference(reference);
             if (getDistance(vehicle_pose, reference) < lookahead) {
@@ -357,41 +356,15 @@ void roundaboutReferenceGenerator() {
             }
             if(getDistance(vehicle_pose,p4) < lookahead || t > 1) {
                 t = 0;
-                maneuver_state = CIRCULATION_STATE;
-                cout << "Circulating inside the roundabout... \n";
-            }
-            break;
-        case CIRCULATION_STATE:
-            reference = circunference(p4,r0,TRANSIT_RADIUS,t);
-            publishReference(reference);
-            if (getDistance(vehicle_pose, reference) < lookahead) {
-                t+= 0.02;
-                cout << "New reference generated. \n" << "t = " << t << "\n";
-            }
-            if(getDistance(vehicle_pose,p5) < lookahead) {
-                t = 0;
-                maneuver_state = EXIT_STATE;
-                cout << "Exiting roundabout... \n";
-            }
-            break;
-        case EXIT_STATE:
-            reference = bezierQuartic(p5,p6,p7,p8,p9,t);
-            publishReference(reference);
-            if (getDistance(vehicle_pose, reference) < lookahead) {
-                t+= 0.025;
-                cout << "New reference generated. \n"<< "t = " << t << "\n";
-            }
-            if(getDistance(vehicle_pose,p9) < lookahead || t > 1) {
-                t = 0.1;
                 maneuver_state = IDLE;
-                cout << "Maneuver finished. \n";
+                cout << "Maneuver finished... \n";
             }
             break;
         case IDLE:
-            enable_roundabout_planner = false;
+            enable_crossing_planner = false;
             control_points_defined = false;
             maneuver_state = DEFINITION_STATE;
-            cout << "Roundabout planner disabled. \n";
-        break;
+            cout << "Crossing planner disabled. \n";
+        break; 
     }
 }

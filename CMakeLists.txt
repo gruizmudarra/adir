@@ -139,6 +139,7 @@ include_directories(
 add_executable(curvature_calc src/curvature_calc.cpp)
 add_executable(env_class src/env_class.cpp)
 add_executable(roundabout_planner src/roundabout_planner.cpp)
+add_executable(crossing_planner src/crossing_planner.cpp)
 add_executable(car_controller src/car_controller.cpp)
 add_executable(manual_speed src/manual_speed.cpp)
 
@@ -154,6 +155,7 @@ add_executable(manual_speed src/manual_speed.cpp)
 add_dependencies(curvature_calc ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
 add_dependencies(env_class ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
 add_dependencies(roundabout_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
+add_dependencies(crossing_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
 add_dependencies(car_controller ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
 add_dependencies(manual_speed ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
 
@@ -164,6 +166,7 @@ add_dependencies(manual_speed ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPOR
 target_link_libraries(curvature_calc ${catkin_LIBRARIES})
 target_link_libraries(env_class ${catkin_LIBRARIES})
 target_link_libraries(roundabout_planner ${catkin_LIBRARIES})
+target_link_libraries(crossing_planner ${catkin_LIBRARIES})
 target_link_libraries(car_controller ${catkin_LIBRARIES})
 target_link_libraries(manual_speed ${catkin_LIBRARIES})
 
