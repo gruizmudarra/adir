@@ -1,4 +1,4 @@
-# Autonomous Driving in Intersections and Roundabouts.
+# Autonomous Driving in Intersections and Roundabouts. (WIP)
 
 This is the code developed in my end of studies project. It consists in a ROS package that needs information about:
 
