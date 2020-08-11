@@ -1,3 +1,4 @@
+<?xml version="1.0"?>
 <launch>
     <node pkg= "adir"   type= "curvature_calc"      name= "curvature_calc"/>
     <node pkg= "adir"   type= "env_class"           name= "env_class"           output= "screen"/>

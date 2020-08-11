@@ -1,6 +1,6 @@
 #include "curvature_calc.h"
 
-// #define PLOT_CURVATURE_DATA
+#define PLOT_CURVATURE_DATA
 
 static const uint32_t POLY_QUEUE_SIZE = 1;
 static const uint32_t CURV_QUEUE_SIZE = 1000;
@@ -156,45 +156,46 @@ void curvatureCalculation() {
     
     // Second grade curvature radius is then: 
     // R_c = 1/(2*a)
+    // rho = 2*a
 
     // Left Lane
     if(LeftLane.degree > 0) {
-        curvature_msg.left = 1/(2*LeftLane.a);
+        curvature_msg.left = 2*LeftLane.a;
         #ifdef PLOT_CURVATURE_DATA
-        left_msg.data = LeftLane.curvature;
+        left_msg.data = curvature_msg.left;
         #endif
     }
     else {
         //ROS_INFO("Couldn't calculate Left Lane curvature");
-        curvature_msg.left = 0;
+        curvature_msg.left = 1000;
         #ifdef PLOT_CURVATURE_DATA
-            left_msg.data = 0;
+            left_msg.data = 1000;
         #endif
     }
     // Center Lane
     if(CenterLane.degree > 0) {
-       curvature_msg.center = 1/(2*CenterLane.a);
+       curvature_msg.center = 2*CenterLane.a;
         #ifdef PLOT_CURVATURE_DATA
-            center_msg.data = CenterLane.curvature;
+            center_msg.data = curvature_msg.center;
         #endif
     }
     else {
-        curvature_msg.center = 0;
+        curvature_msg.center = 1000;
         #ifdef PLOT_CURVATURE_DATA
-            center_msg.data = 0;
+            center_msg.data = 1000;
         #endif
     }
     // Right Lane
     if(RightLane.degree > 0) {
-        curvature_msg.right = 1/(2*RightLane.a);
+        curvature_msg.right = 2*RightLane.a;
         #ifdef PLOT_CURVATURE_DATA
-            right_msg.data = RightLane.curvature;
+            right_msg.data = curvature_msg.right;
         #endif
     }
     else {
-        curvature_msg.right = 0;
+        curvature_msg.right = 1000;
         #ifdef PLOT_CURVATURE_DATA
-            right_msg.data = 0;
+            right_msg.data = 1000;
         #endif
     }
 }
