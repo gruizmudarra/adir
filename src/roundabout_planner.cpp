@@ -1,22 +1,14 @@
 #include "roundabout_planner.h"
 
-static const uint32_t ODOM_QUEUE_SIZE = 1;
-static const uint32_t ENV_QUEUE_SIZE = 1;
-static const uint32_t ENABLE_QUEUE_SIZE = 1;
-
 position_t vehicle_pose(0,0);
 position_t reference(0,0);
-string environment = "";
 bool enable_roundabout_planner = false;
 int node_entry = 0;
 int node_exit = 0;
-double t = 0.1;
 maneuver_state_t maneuver_state = DEFINITION_STATE;
+double t = 0.1;
 position_t r0(0,-5.1), r1(0,0), r2(0,0), i1(0,0), i2(0,0), i3(0,0), i4(0,0);
 position_t p0(0,0), p1(0,0), p2(0,0), p3(0,0), p4(0,0), p5(0,0), p6(0,0), p7(0,0), p8(0,0), p9(0,0);
-bool control_points_defined = false;
-static const double TRANSIT_RADIUS = 1.6; // Distance between road and center of the roundabout
-
 
 #ifdef PRINT_MARKERS
 ros::Publisher marker_pub;
@@ -39,16 +31,24 @@ int main(int argc, char **argv) {
     // Parameters
     nh.param<int>("/loop_rate", loop_rate, 50);
     nh.param<double>("/lookahead", lookahead, 0.01);
+    nh.param<string>("/odom_topic", odometry_topic, "/odom");
+    nh.param<string>("/planning_topic", planning_topic, "/adir/enable_planning");
+    nh.param<string>("/planning_markers_topic", planning_markers_topic, "/adir/planning_markers");
+    nh.param<string>("/reference_topic", reference_topic, "/adir/reference");
+    nh.param<string>("/control_topic", control_topic, "/adir/enable_control");
+    nh.param<string>("/speed_topic", speed_topic, "/manual_control/speed");
+    
+    
     // Subscriptions
-    ros::Subscriber odom_sub = nh.subscribe("/odom_ground_truth", ODOM_QUEUE_SIZE, callbackOdomData);
-    ros::Subscriber adir_sub = nh.subscribe("/adir_enable", 1, callbackADIRData);
+    ros::Subscriber odom_sub = nh.subscribe(odometry_topic, ODOM_QUEUE_SIZE, callbackOdomData);
+    ros::Subscriber adir_sub = nh.subscribe(planning_topic, PLANNING_QUEUE_SIZE, callbackADIRData);
     // Publications
     #ifdef PRINT_MARKERS
-    marker_pub = nh.advertise<visualization_msgs::Marker>("/control_points_marker", 20);
+    marker_pub = nh.advertise<visualization_msgs::Marker>(planning_markers_topic, MARKERS_QUEUE_SIZE);
     #endif
-    reference_pub = nh.advertise<adir::point2D>("/reference",1000);
-    enable_control_pub = nh.advertise<std_msgs::Bool>("/control_enable", 1000);
-    speed_pub = nh.advertise<std_msgs::Int16>("/manual_control/speed", 1000);
+    reference_pub = nh.advertise<adir::point2D>(reference_topic,1000);
+    enable_control_pub = nh.advertise<std_msgs::Bool>(control_topic, 1000);
+    speed_pub = nh.advertise<std_msgs::Int16>(speed_topic, 1000);
     
     // Loop rate
     ros::Rate node_loop_rate(loop_rate);
@@ -225,8 +225,7 @@ position_t getUnitVector(position_t p, position_t q) {
     p9 = position_t(r0.x + l9*getUnitVector(r0,r2).x, r0.y + l9*getUnitVector(r0,r2).y);
     // p9 = r0 + l9*getUnitVector(r0,r2)
     double l8 = 0.85*l9;
-    p8 = position_t(r0.x + l8*getUnitVector(r0,r2).x, r0.y + l8*getUnitVector(r0,r2).y);
-    control_points_defined = true;    
+    p8 = position_t(r0.x + l8*getUnitVector(r0,r2).x, r0.y + l8*getUnitVector(r0,r2).y);    
  }
 
 #ifdef PRINT_MARKERS
@@ -333,6 +332,8 @@ void publishReference(position_t r) {
 }
 
 void roundaboutReferenceGenerator() {
+    float dist_ref = 0;
+    float dist_control = 0;
     switch (maneuver_state) {
         case DEFINITION_STATE:
             cout << "Roundabout planner initialized. \n";
@@ -351,14 +352,16 @@ void roundaboutReferenceGenerator() {
         case ENTRY_STATE:
             reference = bezierQuartic(p0,p1,p2,p3,p4,t);
             publishReference(reference);
-            if (getDistance(vehicle_pose, reference) < lookahead) {
-                t+= 0.025;
-                // cout << "New reference generated. t = " << t << "\n";
-            }
             if(getDistance(vehicle_pose,p4) < lookahead || t > 1) {
                 t = 0;
                 maneuver_state = CIRCULATION_STATE;
                 cout << "Circulating inside the roundabout...\n";
+            }
+            else {
+                if (getDistance(vehicle_pose, reference) < lookahead) {
+                t+= 0.025;
+                // cout << "New reference generated. t = " << t << "\n";
+                }
             }
             break;
         case CIRCULATION_STATE:

@@ -23,19 +23,27 @@ Publications:
 
 #ifndef CURVATURE_CALC_H
 #define CURVATURE_CALC_H
-
+// #define PLOT_CURVATURE_DATA // Macro for data visualization in rqt_plot
 #include "ros/ros.h"
-
 #include "iostream"
 using namespace std;
-
 #include "math.h"
-
+// Import ROS message libraries
 #include "std_msgs/Int32MultiArray.h"
 #include "std_msgs/Float32MultiArray.h"
 #include "std_msgs/Float32.h"
-
 #include "adir/curvature_t.h"
+// Message queueing parameters
+static const uint32_t POLY_QUEUE_SIZE = 1;
+static const uint32_t CURV_QUEUE_SIZE = 1000;
+
+// Publishing topics name
+
+#ifdef PLOT_CURVATURE_DATA
+static const string CURVATURE_TOPIC_LEFT = "/adir/curvature_calc/left";
+static const string CURVATURE_TOPIC_CENTER = "/adir/curvature_calc/center";
+static const string CURVATURE_TOPIC_RIGHT = "/adir/curvature_calc/right";
+#endif
 
 struct polynomial_t {
     double a;
@@ -44,6 +52,7 @@ struct polynomial_t {
     int degree;
 };
 
+// Function promises
 void callbackCoefLeft(const std_msgs::Float32MultiArray::ConstPtr& msg);
 void callbackCoefCenter(const std_msgs::Float32MultiArray::ConstPtr& msg);
 void callbackCoefRight(const std_msgs::Float32MultiArray::ConstPtr& msg);
@@ -51,4 +60,5 @@ void callbackDegrees(const std_msgs::Int32MultiArray::ConstPtr& msg);
 void curvatureCalculation();
 
 int loop_rate;
+string curvature_topic;
 #endif

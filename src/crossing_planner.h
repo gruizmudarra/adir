@@ -64,4 +64,18 @@ void crossingReferenceGenerator();
 
 int loop_rate;
 double lookahead;
+
+string odometry_topic;
+string planning_topic;
+
+string reference_topic;
+string planning_markers_topic;
+string control_topic;
+string speed_topic;
+
+static const uint32_t ODOM_QUEUE_SIZE = 1;
+static const uint32_t ENV_QUEUE_SIZE = 1;
+static const uint32_t ENABLE_QUEUE_SIZE = 1;
+static const uint32_t PLANNING_QUEUE_SIZE = 1;
+static const uint32_t MARKERS_QUEUE_SIZE = 20;
 #endif

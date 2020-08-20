@@ -1,21 +1,17 @@
 #include "crossing_planner.h"
 
-static const uint32_t ODOM_QUEUE_SIZE = 1;
-static const uint32_t ENV_QUEUE_SIZE = 1;
-static const uint32_t ENABLE_QUEUE_SIZE = 1;
-
 position_t vehicle_pose(0,0);
 position_t reference(0,0);
-string environment = "";
+
 bool enable_crossing_planner = false;
 int node_entry = 0;
 int node_exit = 0;
 double t = 0.1;
 maneuver_state_t maneuver_state = DEFINITION_STATE;
 position_t r0(0,0), r1(0,0), r2(0,0), i1(0,0), i2(0,0), i3(0,0), i4(0,0);
-double l1;
 position_t p0(0,0), p1(0,0), p2(0,0), p3(0,0), p4(0,0);
 
+bool control_points_defined = false;
 
 #ifdef PRINT_MARKERS
 ros::Publisher marker_pub;
@@ -38,16 +34,23 @@ int main(int argc, char **argv) {
     // Parameters
     nh.param<int>("/loop_rate", loop_rate, 50);
     nh.param<double>("/lookahead", lookahead, 0.01);
+    nh.param<string>("/odom_topic", odometry_topic, "/odom");
+    nh.param<string>("/planning_topic", planning_topic, "/adir/enable_planning");
+    nh.param<string>("/planning_markers_topic", planning_markers_topic, "/adir/planning_markers");
+    nh.param<string>("/reference_topic", reference_topic, "/adir/reference");
+    nh.param<string>("/control_topic", control_topic, "/adir/enable_control");
+    nh.param<string>("/speed_topic", speed_topic, "/manual_control/speed");
+    
     // Subscriptions
-    ros::Subscriber odom_sub = nh.subscribe("/odom_ground_truth", ODOM_QUEUE_SIZE, callbackOdomData);
-    ros::Subscriber adir_sub = nh.subscribe("/adir_enable", 1, callbackADIRData);
+    ros::Subscriber odom_sub = nh.subscribe(odometry_topic, ODOM_QUEUE_SIZE, callbackOdomData);
+    ros::Subscriber adir_sub = nh.subscribe(planning_topic, PLANNING_QUEUE_SIZE, callbackADIRData);
     // Publications
     #ifdef PRINT_MARKERS
-    marker_pub = nh.advertise<visualization_msgs::Marker>("/control_points_marker", 1000);
+    marker_pub = nh.advertise<visualization_msgs::Marker>(planning_markers_topic, MARKERS_QUEUE_SIZE);
     #endif
-    reference_pub = nh.advertise<adir::point2D>("/reference",1000);
-    enable_control_pub = nh.advertise<std_msgs::Bool>("/control_enable", 1000);
-    speed_pub = nh.advertise<std_msgs::Int16>("/manual_control/speed", 1000);
+    reference_pub = nh.advertise<adir::point2D>(reference_topic,1000);
+    enable_control_pub = nh.advertise<std_msgs::Bool>(control_topic, 1000);
+    speed_pub = nh.advertise<std_msgs::Int16>(speed_topic, 1000);
     
     // Loop rate
     ros::Rate node_loop_rate(loop_rate);
@@ -104,13 +107,7 @@ position_t bezierQuartic(position_t P, position_t Q, position_t R, position_t S,
     return pf;    
 }
 
-position_t circunference(position_t P, position_t c, double r, double t) {
-    double phi = atan2(P.y - c.y, P.x - c.x);
-    position_t Q(c.x + r*cos(phi+t), c.y + r*sin(phi+t));
-    return Q;
-}
-
- double getDistance(position_t p, position_t q) {
+double getDistance(position_t p, position_t q) {
      return sqrt((q.x - p.x)*(q.x - p.x)+(q.y - p.y)*(q.y - p.y));
  }
 
@@ -172,18 +169,15 @@ position_t getUnitVector(position_t p, position_t q) {
             i4 = position_t(-3.9933,-0.4689);
             r0 = position_t(-3.9648,-0.5100);
             r2 = position_t(-3.0611,-0.20);
-            l1 = -1*getDistance(i1,i2)/3;
             break;
         case 13: 
             i3 = position_t(-4.2772,-0.7886);
             i4 = position_t(-4.6049,-1.0619);
             if (node_entry == 9) {
                 r0 = position_t(-3.9648,-0.5100);
-                l1 = getDistance(i1,i2)+ getDistance(i1,i2)/3;
             }
             else {
                 r0 = position_t(-4.6046,-1.0749);
-                l1 = -1*getDistance(i1,i2)/3;
             }
             r2 = position_t(-3.6448,-1.7255);
             break;
@@ -192,7 +186,6 @@ position_t getUnitVector(position_t p, position_t q) {
             i4 = position_t(-5.4006,-0.8654);
             r0 = position_t(-4.6046,-1.0749);
             r2 = position_t(-5.2838,-2.0571);
-            l1 = getDistance(i1,i2)+ getDistance(i1,i2)/3;
             break;
         // Regular crossing
         case 18: // right turn 
@@ -200,18 +193,16 @@ position_t getUnitVector(position_t p, position_t q) {
             i4 = position_t(-4.6459,-4.6512);
             r0 = position_t(-4.6506,-4.6488);
             r2 = position_t(-4.8383,-3.5583);
-            l1 = -1*getDistance(i1,i2)/3;
+            
             break;
         case 19: 
             i3 = position_t(-4.6651,-5.0687);
             i4 = position_t(-4.6496,-5.5033);
             if (node_entry == 15) {
                 r0 = position_t(-4.6506,-4.6488);
-                l1 = getDistance(i1,i2)+ getDistance(i1,i2)/5;
             }
             else {
                 r0 = position_t(-4.6447,-5.4963);
-                l1 = -1*getDistance(i1,i2)/3;
             }
             r2 = position_t(-3.4673,-5.2620);
             break;
@@ -220,7 +211,6 @@ position_t getUnitVector(position_t p, position_t q) {
             i4 = position_t(-5.4883,-5.4876);
             r0 = position_t(-4.6447,-5.4963);
             r2 = position_t(-5.2865,-6.5681);
-            l1 = getDistance(i1,i2)+ getDistance(i1,i2)/3;
             break;
         default: 
             cout << "Exception on exit node. \n";
@@ -232,26 +222,32 @@ position_t getUnitVector(position_t p, position_t q) {
 
  void defineControlPoints() {
     cout << "Defining control points. \n";    
+    double radius, theta, l1;
+    position_t iturn(0,0);
+    // Giros a la izquierda
+    if( (node_entry == 17 && node_exit == 19) || 
+        (node_entry == 11 && node_exit == 13) || 
+        node_exit == 18 || node_exit == 12) {
+    
+        l1 = -1*getDistance(i1,i2)/3;
+        radius = getDistance(i1,r0);
+        theta = -M_PI_4;
+        iturn = i1;
+    }
+    // Giros a la derecha
+    else {
+        l1 = getDistance(i1,i2);//+ getDistance(i1,i2)/3;
+        radius = getDistance(i2,r0);
+        theta = M_PI_4;
+        iturn = i2;
+    }
     p0 = r1;
-    p4 = r2;
     p1 = position_t(i1.x + l1*getUnitVector(i1,i2).x,i1.y + l1*getUnitVector(i1,i2).y);
-    // p2 = i1 + l2*getUnitVector(i2,i1)
+    p2 = position_t(radius*cos(atan2(iturn.y-r0.y,iturn.x-r0.x)+theta)+r0.x, 
+                    radius*sin(atan2(iturn.y-r0.y,iturn.x-r0.x)+theta)+r0.y);
     double l3 = getDistance(i4,i3)/2;
     p3 = position_t(i3.x + l3*getUnitVector(i3,i4).x, i3.y + l3*getUnitVector(i3,i4).y);
-    if((node_entry == 17 && node_exit == 19) || (node_entry == 11 && node_exit == 13) || node_exit == 18 || node_exit == 12) {
-        double l2 = 0.6;
-        double arc = getDistance(r0,i3);
-        double phi = l2/arc;
-        p2 = position_t(arc*cos(atan2(i3.y-r0.y,i3.x-r0.x)+phi)+r0.x, 
-                        arc*sin(atan2(i3.y-r0.y,i3.x-r0.x)+phi)+r0.y);
-    }
-    else {
-        double l2 = 0.6;
-        double arc = getDistance(r0,i4);
-        double phi = l2/arc;
-        p2 = position_t(arc*cos(atan2(i4.y-r0.y,i4.x-r0.x)-phi)+r0.x, 
-                        arc*sin(atan2(i4.y-r0.y,i4.x-r0.x)-phi)+r0.y);
-    }
+    p4 = r2;
  }
 
 #ifdef PRINT_MARKERS

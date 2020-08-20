@@ -39,6 +39,12 @@ struct quaternion_t {
     double w;
 };
 
+static const double ORIENTATION_P = 500.0;
+
+static const double SPEED_P = 10.0;
+static const double SPEED_I = 10.0;
+static const double SPEED_REFERENCE = 0.1;
+
 void callbackReferenceData(const adir::point2D::ConstPtr& msg);
 void callbackOdomData(const nav_msgs::Odometry::ConstPtr& msg);
 void callbackEnableControlData(const std_msgs::Bool::ConstPtr& msg);
@@ -48,4 +54,15 @@ void orientationControl();
 void speedControl();
 
 int loop_rate;
+string odometry_topic;
+string reference_topic;
+string control_topic;
+string speed_topic;
+string steering_topic;
+
+static const uint32_t ODOM_QUEUE_SIZE = 1;
+static const uint32_t REFERENCE_QUEUE_SIZE = 1;
+static const uint32_t CONTROL_QUEUE_SIZE = 1;
+static const uint32_t SPEED_QUEUE_SIZE = 1;
+static const uint32_t STEERING_QUEUE_SIZE = 1;
 #endif

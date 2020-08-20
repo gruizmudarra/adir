@@ -1,8 +1,4 @@
 #include "env_class.h"
-static const uint32_t ODOM_QUEUE_SIZE = 1;
-static const uint32_t CURV_QUEUE_SIZE = 1000;
-
-static const uint32_t CURV_LIMIT = 300;
 
 adir::curvature_t curvLane;
 position_t vehicle_pose(0,0); 
@@ -13,14 +9,12 @@ std_msgs::Bool tracking_msg;
 ros::Publisher adir_pub;
 adir::enable_t adir_msg;
 
-ros::Publisher control_pub;
-std_msgs::Bool control_msg;
-
 ros::Publisher speed_pub;
 std_msgs::Int16 speed_msg;
 
 bool inside_roundabout = false;
 bool inside_crossing = false; 
+bool ld_activated = false; 
 
  int main (int argc, char **argv) {
     // Node info
@@ -29,15 +23,22 @@ bool inside_crossing = false;
     // Parameters
     nh.param<int>("/loop_rate", loop_rate, 50);
     nh.param<double>("/lookahead", lookahead, 0.01);
+    nh.param<int>("/stop_speed", stop_speed, 0);
+    nh.param<int>("/move_speed", move_speed, 70);
+    nh.param<string>("/curvature_topic", curvature_topic, "/adir/curvature_calc");
+    nh.param<string>("/odom_topic", odometry_topic, "/odom");
+    nh.param<string>("/line_detection_topic", line_detection_topic, "/tracking_enable");
+    nh.param<string>("/planning_tpic", planning_topic, "/adir/enable_planning");
+    nh.param<string>("/speed_topic", speed_topic, "/manual_control/speed");
+    
     // Subcriptions
-    ros::Subscriber curv_sub = nh.subscribe("/lane_curvature", CURV_QUEUE_SIZE, callbackCurvData);
-    ros::Subscriber odom_sub = nh.subscribe("/odom_ground_truth", ODOM_QUEUE_SIZE, callbackOdomData);
+    ros::Subscriber curv_sub = nh.subscribe(curvature_topic, CURV_QUEUE_SIZE, callbackCurvData);
+    ros::Subscriber odom_sub = nh.subscribe(odometry_topic, ODOM_QUEUE_SIZE, callbackOdomData);
     
     // Publications
-    tracking_pub = nh.advertise<std_msgs::Bool>("/tracking_enable", 1000);
-    adir_pub = nh.advertise<adir::enable_t>("/adir_enable", 1000);
-    control_pub = nh.advertise<std_msgs::Bool>("/control_enable", 1000);
-    speed_pub = nh.advertise<std_msgs::Int16>("/manual_control/speed", 1000);
+    tracking_pub = nh.advertise<std_msgs::Bool>(line_detection_topic, LD_QUEUE_SIZE);
+    adir_pub = nh.advertise<adir::enable_t>(planning_topic, PLANNING_QUEUE_SIZE);
+    speed_pub = nh.advertise<std_msgs::Int16>(speed_topic, SPEED_QUEUE_SIZE);
 
     // Define topologic map
     std::vector<position_t> topologic_map = defineIntersectionNodes();
@@ -151,16 +152,23 @@ void environmentClassifier(std::vector<position_t> map) {
     if (intersection) {
         environment = intersectionClassifier(node_id);
         if(environment == "ROUNDABOUT ENTRY" && !inside_roundabout) {
-            speed_msg.data = 0;
+            // The car stops
+            speed_msg.data = stop_speed;
             speed_pub.publish(speed_msg);
-            cout << "You are right now in the entry node " << node_id << " of the roundabout.\n";
-            int node_exit;
-            cout << "Insert exit node: \n" ;
-            cin >> node_exit;
             // line_detection_fu deactivated
             tracking_msg.data = false;
             tracking_pub.publish(tracking_msg);
-            // roundabout_planner activated
+            // Ask exit node
+            cout << "You are right now in the entry node " << node_id << " of the roundabout.\n";
+            int node_exit = 0;
+            while (node_exit < 5 || node_exit > 8) {
+                cout << "Insert exit node (5-8): \n" ;
+                cin >> node_exit;
+                if (node_exit < 5 || node_exit > 8) {
+                    cout << "Invalid node \n";
+                }
+            }
+            // Packet nodes and activate the roundabout_planner
             adir_msg.roundabout = true;
             adir_msg.crossing = false;
             adir_msg.node_entry = node_id;
@@ -170,29 +178,31 @@ void environmentClassifier(std::vector<position_t> map) {
         }
         else if (environment == "CROSSING ENTRY" && !inside_crossing) {
             // the car stops
-            speed_msg.data = 0;
+            speed_msg.data = stop_speed;
             speed_pub.publish(speed_msg);
-            // asks where you wanna go since it doesn't have global planification
-            cout << "You are right now in the entry node (" << node_id << ") of a crossing.\n";
-            int node_exit;
-            cout << "Insert exit node: \n" ;
-            cin >> node_exit;
-            // curved crossing, don't want to turn
-            if ((node_id == 9 && node_exit == 14)|| (node_id == 11 && node_exit == 12)) {
-                // line_detection_fu activate
-                tracking_msg.data = true;
-                tracking_pub.publish(tracking_msg);
-                // keep going straight
-                speed_msg.data = 70;
-                speed_pub.publish(speed_msg);
+            // line_detection_fu deactivated
+            tracking_msg.data = false;
+            tracking_pub.publish(tracking_msg);
+            // Ask exit node
+            cout << "You are right now in the entry node " << node_id << " of a crossing.\n";
+            int node_exit = 0;
+            while (node_exit < 9 || node_exit > 20) {
+                cout << "Insert exit node (9-20): \n" ;
+                cin >> node_exit;
+                if (node_exit <9 || node_exit > 20) {
+                    cout << "Invalid node \n";
+                }
             }
-            // regular crossing, don't want to turn
-            else if ((node_id == 15 && node_exit == 20)|| (node_id == 17 && node_exit == 18)) {
+            // don't want to turn
+            if ((node_id == 9 && node_exit == 14)   || // curved crossing
+                (node_id == 11 && node_exit == 12)  ||
+                (node_id == 15 && node_exit == 20)  || // regular crossing
+                (node_id == 17 && node_exit == 18)) {
                 // line_detection_fu activate
                 tracking_msg.data = true;
                 tracking_pub.publish(tracking_msg);
                 // keep going straight
-                speed_msg.data = 70;
+                speed_msg.data = move_speed;
                 speed_pub.publish(speed_msg);
             }
             // you want to turn
@@ -209,12 +219,13 @@ void environmentClassifier(std::vector<position_t> map) {
             }
             inside_crossing = true;
         }
-        else if ((environment == "ROUNDABOUT EXIT") || (environment == "CROSSING EXIT")) {   
+        else if ((environment == "ROUNDABOUT EXIT") || 
+                 (environment == "CROSSING EXIT")) {   
             // line_detection_fu activated
             tracking_msg.data = true;
             tracking_pub.publish(tracking_msg);
             // recover initial speed
-            speed_msg.data = 70;
+            speed_msg.data = move_speed;
             speed_pub.publish(speed_msg);
             inside_roundabout = false;
             inside_crossing = false;
@@ -224,13 +235,13 @@ void environmentClassifier(std::vector<position_t> map) {
     else {
         double mod_curv[2] = {abs(curvLane.center), abs(curvLane.right)};
         // If curvature is greater than 300, then it's a straight road
-        if (mod_curv[0] > CURV_LIMIT || mod_curv[1] > CURV_LIMIT) { 
+        if (mod_curv[0] < CURV_THRESHOLD || mod_curv[1] < CURV_THRESHOLD) { 
             environment = "STRAIGHT";
         }
-        // If is lesser or equal than +-300
+        // If is lesser or equal than CURV_THRESHOLD
         else {
             // If it's not zero, it's a curved road
-            if (mod_curv[0] || mod_curv[1]) {
+            if ((mod_curv[0] || mod_curv[1]) < 10*CURV_THRESHOLD) {
                 // Negative -> Left
                 if(curvLane.center < 0 || curvLane.right < 0) {
                     environment = "LEFT CURVE";
@@ -244,6 +255,12 @@ void environmentClassifier(std::vector<position_t> map) {
             else {
                 environment = "EXCEPTION";
             }
+        }
+        if (!ld_activated) {
+            // line_detection_fu activated
+                tracking_msg.data = true;
+                tracking_pub.publish(tracking_msg);
+                ld_activated = true;
         }
     }
 }

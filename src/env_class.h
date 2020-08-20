@@ -39,6 +39,21 @@ struct position_t {
     position_t(double arg_x, double arg_y) : x(arg_x), y(arg_y) {}
 };
 
+// Subscriptions 
+
+
+static const uint32_t CURV_QUEUE_SIZE = 1000;
+static const uint32_t ODOM_QUEUE_SIZE = 1;
+// Publications 
+
+// Message queueing parameters
+static const uint32_t LD_QUEUE_SIZE = 1000;
+static const uint32_t PLANNING_QUEUE_SIZE = 1000;
+static const uint32_t SPEED_QUEUE_SIZE = 1000;
+
+
+static const uint32_t CURV_THRESHOLD = 0.1;
+
 void callbackCurvData(const adir::curvature_t::ConstPtr& msg);
 void callbackOdomData(const nav_msgs::Odometry::ConstPtr& msg);
 
@@ -47,7 +62,17 @@ std::vector<position_t> defineIntersectionNodes();
 bool checkPosition(std::vector<position_t> map, int& node_id);
 string intersectionClassifier(int node_id);
 void environmentClassifier(std::vector<position_t> map);
+
+
 int loop_rate;
 double lookahead;
+int stop_speed;
+int move_speed;
+string curvature_topic;
+string odometry_topic;
+string line_detection_topic;
+string planning_topic;
+string speed_topic;
+
 
 #endif

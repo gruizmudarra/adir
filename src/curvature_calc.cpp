@@ -1,10 +1,5 @@
 #include "curvature_calc.h"
 
-#define PLOT_CURVATURE_DATA
-
-static const uint32_t POLY_QUEUE_SIZE = 1;
-static const uint32_t CURV_QUEUE_SIZE = 1000;
-
 #ifdef PLOT_CURVATURE_DATA
 ros::Publisher left_pub;
 std_msgs::Float32 left_msg;
@@ -20,6 +15,7 @@ adir::curvature_t curvature_msg;
 
 polynomial_t LeftLane, CenterLane, RightLane;
 
+
  int main (int argc, char **argv) {
     
     ros::init(argc, argv, "curvature_calc");
@@ -27,6 +23,8 @@ polynomial_t LeftLane, CenterLane, RightLane;
 	ros::NodeHandle nh;
     //Get params
     nh.param<int>("/loop_rate", loop_rate,50);
+    nh.param<string>("/curvature_topic", curvature_topic, "/adir/curvature_calc");
+    
     // Subscribe to polynomials degree data
     ros::Subscriber degrees_sub = nh.subscribe("/lane_model/deg", POLY_QUEUE_SIZE, callbackDegrees);
     // Subscribe to polynomials coefficients data
@@ -35,15 +33,14 @@ polynomial_t LeftLane, CenterLane, RightLane;
     ros::Subscriber coefRight_sub = nh.subscribe("/lane_model/coef/Right", POLY_QUEUE_SIZE, callbackCoefRight);
     
     //Publications
-    
+    ros::Publisher curvature_pub = nh.advertise<adir::curvature_t>(curvature_topic, CURV_QUEUE_SIZE);
     #ifdef PLOT_CURVATURE_DATA
-    left_pub = nh.advertise<std_msgs::Float32>("/curvature_calc/left", CURV_QUEUE_SIZE);
-    center_pub = nh.advertise<std_msgs::Float32>("/curvature_calc/center", CURV_QUEUE_SIZE);
-    right_pub = nh.advertise<std_msgs::Float32>("/curvature_calc/right", CURV_QUEUE_SIZE);
+    left_pub = nh.advertise<std_msgs::Float32>(CURVATURE_TOPIC_LEFT, CURV_QUEUE_SIZE);
+    center_pub = nh.advertise<std_msgs::Float32>(CURVATURE_TOPIC_CENTER, CURV_QUEUE_SIZE);
+    right_pub = nh.advertise<std_msgs::Float32>(CURVATURE_TOPIC_RIGHT, CURV_QUEUE_SIZE);
     #endif
     
-    ros::Publisher curvature_pub = nh.advertise<adir::curvature_t>("/lane_curvature", CURV_QUEUE_SIZE);
-
+    // Frequency rate
     ros::Rate node_loop_rate(loop_rate);
     
     while (ros::ok()) {

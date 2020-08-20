@@ -10,17 +10,9 @@ position_t reference(0,0);
 quaternion_t quat;
 double roll, pitch, yaw;
 
-
 car_state_t car;
 
-static const double ORIENTATION_P = 500.0;
-
-static const double SPEED_P = 10.0;
-static const double SPEED_I = 10.0;
-static const double SPEED_REFERENCE = 0.1;
-
 bool enable_orientation_control = false;
-
 
 int main (int argc, char **argv) {
     // Node info
@@ -28,14 +20,19 @@ int main (int argc, char **argv) {
 	ros::NodeHandle nh;
     // Parameters
     nh.param<int>("/loop_rate", loop_rate,50);
-
+    nh.param<string>("/odom_topic", odometry_topic, "/odom");
+    nh.param<string>("/reference_topic", reference_topic, "/adir/reference");
+    nh.param<string>("/control_topic", control_topic, "/adir/enable_control");
+    nh.param<string>("/speed_topic", speed_topic, "/manual_control/speed");
+    nh.param<string>("/steering_topic", steering_topic, "/steering");
+        
     // Subscriptions
-    ros::Subscriber reference_sub = nh.subscribe("/reference", 1000, callbackReferenceData);
-    ros::Subscriber yaw_sub = nh.subscribe("/odom_ground_truth", 1, callbackOdomData);
-    ros::Subscriber enable_control_sub = nh.subscribe("/control_enable", 1, callbackEnableControlData);
+    ros::Subscriber reference_sub = nh.subscribe(reference_topic, REFERENCE_QUEUE_SIZE, callbackReferenceData);
+    ros::Subscriber odom_sub = nh.subscribe(odometry_topic, ODOM_QUEUE_SIZE, callbackOdomData);
+    ros::Subscriber control_sub = nh.subscribe(control_topic, CONTROL_QUEUE_SIZE, callbackEnableControlData);
     // Publications
-    speed_pub = nh.advertise<std_msgs::Int16>("/manual_control/speed", 1000);
-    steering_pub = nh.advertise<std_msgs::UInt8>("/steering", 1000);
+    speed_pub = nh.advertise<std_msgs::Int16>(speed_topic, SPEED_QUEUE_SIZE);
+    steering_pub = nh.advertise<std_msgs::UInt8>(steering_topic, STEERING_QUEUE_SIZE);
     // Loop rate
     ros::Rate node_loop_rate(loop_rate);
 
