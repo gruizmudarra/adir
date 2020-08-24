@@ -12,9 +12,15 @@ adir::enable_t adir_msg;
 ros::Publisher speed_pub;
 std_msgs::Int16 speed_msg;
 
+ros::Publisher env_pub;
+std_msgs::String env_msg;
+
 bool inside_roundabout = false;
 bool inside_crossing = false; 
 bool ld_activated = false; 
+
+string prev_environment ="";
+int n = 0;
 
  int main (int argc, char **argv) {
     // Node info
@@ -28,7 +34,8 @@ bool ld_activated = false;
     nh.param<string>("/curvature_topic", curvature_topic, "/adir/curvature_calc");
     nh.param<string>("/odom_topic", odometry_topic, "/odom");
     nh.param<string>("/line_detection_topic", line_detection_topic, "/tracking_enable");
-    nh.param<string>("/planning_tpic", planning_topic, "/adir/enable_planning");
+    nh.param<string>("/planning_topic", planning_topic, "/adir/enable_planning");
+    nh.param<string>("/environment_topic", environment_topic, "/adir/environment");
     nh.param<string>("/speed_topic", speed_topic, "/manual_control/speed");
     
     // Subcriptions
@@ -38,6 +45,7 @@ bool ld_activated = false;
     // Publications
     tracking_pub = nh.advertise<std_msgs::Bool>(line_detection_topic, LD_QUEUE_SIZE);
     adir_pub = nh.advertise<adir::enable_t>(planning_topic, PLANNING_QUEUE_SIZE);
+    env_pub = nh.advertise<std_msgs::String>(environment_topic, ENV_QUEUE_SIZE);
     speed_pub = nh.advertise<std_msgs::Int16>(speed_topic, SPEED_QUEUE_SIZE);
 
     // Define topologic map
@@ -158,6 +166,7 @@ void environmentClassifier(std::vector<position_t> map) {
             // line_detection_fu deactivated
             tracking_msg.data = false;
             tracking_pub.publish(tracking_msg);
+            ld_activated = false;
             // Ask exit node
             cout << "You are right now in the entry node " << node_id << " of the roundabout.\n";
             int node_exit = 0;
@@ -168,6 +177,11 @@ void environmentClassifier(std::vector<position_t> map) {
                     cout << "Invalid node \n";
                 }
             }
+            
+            prev_environment = environment;
+            env_msg.data = environment;
+            env_pub.publish(env_msg);
+            
             // Packet nodes and activate the roundabout_planner
             adir_msg.roundabout = true;
             adir_msg.crossing = false;
@@ -183,11 +197,12 @@ void environmentClassifier(std::vector<position_t> map) {
             // line_detection_fu deactivated
             tracking_msg.data = false;
             tracking_pub.publish(tracking_msg);
+            ld_activated = false;
             // Ask exit node
             cout << "You are right now in the entry node " << node_id << " of a crossing.\n";
             int node_exit = 0;
             while (node_exit < 9 || node_exit > 20) {
-                cout << "Insert exit node (9-20): \n" ;
+                cout << "Insert exit node (12-13-14) or (18-19-20): \n" ;
                 cin >> node_exit;
                 if (node_exit <9 || node_exit > 20) {
                     cout << "Invalid node \n";
@@ -201,15 +216,13 @@ void environmentClassifier(std::vector<position_t> map) {
                 // line_detection_fu activate
                 tracking_msg.data = true;
                 tracking_pub.publish(tracking_msg);
+                ld_activated = true;
                 // keep going straight
                 speed_msg.data = move_speed;
                 speed_pub.publish(speed_msg);
             }
             // you want to turn
             else {
-                // line_detection_fu deactivated
-                tracking_msg.data = false;
-                tracking_pub.publish(tracking_msg);
                 // crossing_planner activated
                 adir_msg.roundabout = false;
                 adir_msg.crossing = true;
@@ -217,13 +230,22 @@ void environmentClassifier(std::vector<position_t> map) {
                 adir_msg.node_exit = node_exit;
                 adir_pub.publish(adir_msg);
             }
+            // publish environment for debug
+            prev_environment = environment;
+            env_msg.data = environment;
+            env_pub.publish(env_msg);
             inside_crossing = true;
         }
-        else if ((environment == "ROUNDABOUT EXIT") || 
-                 (environment == "CROSSING EXIT")) {   
+        else if (((environment == "ROUNDABOUT EXIT") || 
+                 (environment == "CROSSING EXIT")) && 
+                 (inside_roundabout || inside_crossing)) {  
+            prev_environment = environment;
+            env_msg.data = environment;
+            env_pub.publish(env_msg);
             // line_detection_fu activated
             tracking_msg.data = true;
             tracking_pub.publish(tracking_msg);
+            ld_activated = true;
             // recover initial speed
             speed_msg.data = move_speed;
             speed_pub.publish(speed_msg);
@@ -234,14 +256,14 @@ void environmentClassifier(std::vector<position_t> map) {
     // If it is no near a intersection, check curvature to check if the car is in a straight or curved road
     else {
         double mod_curv[2] = {abs(curvLane.center), abs(curvLane.right)};
-        // If curvature is greater than 300, then it's a straight road
-        if (mod_curv[0] < CURV_THRESHOLD || mod_curv[1] < CURV_THRESHOLD) { 
+        // If curvature is near 0, then it's a straight road
+        if (mod_curv[0] <= CURV_THRESHOLD && mod_curv[1] <= CURV_THRESHOLD) { 
             environment = "STRAIGHT";
         }
-        // If is lesser or equal than CURV_THRESHOLD
+        // If is lesser than a big number (inf)
         else {
-            // If it's not zero, it's a curved road
-            if ((mod_curv[0] || mod_curv[1]) < 10*CURV_THRESHOLD) {
+            // If it's not inf, it's a curved road
+            if (mod_curv[0] < 100*CURV_THRESHOLD || mod_curv[1] < 100*CURV_THRESHOLD) {
                 // Negative -> Left
                 if(curvLane.center < 0 || curvLane.right < 0) {
                     environment = "LEFT CURVE";
@@ -251,16 +273,24 @@ void environmentClassifier(std::vector<position_t> map) {
                     environment = "RIGHT CURVE";
                 }
             }
-            // If it's zero, lane detection failed
+            // If it's inf, lane detection failed
             else {
                 environment = "EXCEPTION";
             }
         }
-        if (!ld_activated) {
+        if (!ld_activated && !inside_roundabout && !inside_crossing) {
             // line_detection_fu activated
-                tracking_msg.data = true;
-                tracking_pub.publish(tracking_msg);
-                ld_activated = true;
+            tracking_msg.data = true;
+            tracking_pub.publish(tracking_msg);
+            ld_activated = true;
+        }
+        else {
+            // If there's a change, publish new environment detected
+            if (environment != prev_environment && !inside_roundabout && !inside_crossing) {
+                prev_environment = environment;
+                env_msg.data = environment;
+                env_pub.publish(env_msg);
+            }
         }
     }
 }

@@ -50,9 +50,10 @@ static const uint32_t ODOM_QUEUE_SIZE = 1;
 static const uint32_t LD_QUEUE_SIZE = 1000;
 static const uint32_t PLANNING_QUEUE_SIZE = 1000;
 static const uint32_t SPEED_QUEUE_SIZE = 1000;
+static const uint32_t ENV_QUEUE_SIZE = 1;
 
 
-static const uint32_t CURV_THRESHOLD = 0.1;
+static const double CURV_THRESHOLD = 0.007;
 
 void callbackCurvData(const adir::curvature_t::ConstPtr& msg);
 void callbackOdomData(const nav_msgs::Odometry::ConstPtr& msg);
@@ -72,6 +73,7 @@ string curvature_topic;
 string odometry_topic;
 string line_detection_topic;
 string planning_topic;
+string environment_topic;
 string speed_topic;
 
 

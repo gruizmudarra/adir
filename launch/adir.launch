@@ -16,6 +16,7 @@
     <param name= "speed_topic"              type= "string"         value="/manual_control/speed"/>
     <param name= "steering"                 type= "string"         value="/steering"/>
     <param name= "curvature_topic"          type= "string"         value="/adir/curvature_calc"/>
+    <param name= "environment_topic"        type= "string"         value="/adir/environment"/>
     <param name= "planning_topic"           type= "string"         value="/adir/enable_planning"/>
     <param name= "reference_topic"          type= "string"         value="/adir/reference"/>
     <param name= "control_topic"            type= "string"         value="/adir/enable_control"/>
