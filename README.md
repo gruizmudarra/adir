@@ -1,5 +1,5 @@
-# Autonomous Driving in Intersections and Roundabouts. (WIP)
-
+# Autonomous Driving in Intersections and Roundabouts.
+## I'm still working on documenting this repository and the README.
 This is the code developed in my end of studies project. It consists in a ROS package that needs information about:
 
 - Odometry
