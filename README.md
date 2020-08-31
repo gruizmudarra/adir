@@ -1,18 +1,8 @@
 # Autonomous Driving in Intersections and Roundabouts.
 ## I'm still working on documenting this repository and the README.
-This is the code developed in my end of studies project. It consists in a ROS package that needs information about:
+This is the code developed for my Bsc. thesis. 
 
-- Odometry
-- Polinomial estimations of the lanes of the road
-
-Given this parameters, a node calculates the environment the car is in, for example:
-
-1. Straight road
-2. Curved road
-3. Crossing 
-4. Roundabout 
-
-Other node generates the action to move through the different situations. 
+It consists in a ROS package that provides a local navigation feature to a 1/10th scale car on a urban circuit. 
 
 ## Getting Started
 
