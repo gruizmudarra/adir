@@ -12,7 +12,7 @@
     <param name= "stop_speed"    type= "int"      value="0"/>
 
     <param name= "line_detection_topic"     type= "string"         value="/tracking_enable"/>
-    <param name= "odom_topic"               type= "string"         value="/odom_ground_truth"/>
+    <param name= "odom_topic"               type= "string"         value="/odom"/>
     <param name= "speed_topic"              type= "string"         value="/manual_control/speed"/>
     <param name= "steering"                 type= "string"         value="/steering"/>
     <param name= "curvature_topic"          type= "string"         value="/adir/curvature_calc"/>
