@@ -353,11 +353,6 @@ void crossingReferenceGenerator() {
             cout << "Crossing planner initialized. \n";
             selectRestrictionPoints();
             defineControlPoints();
-            cout << "P0 = (" << p0.x << ", " << p0.y << ")\n";
-            cout << "P1 = (" << p1.x << ", " << p1.y << ")\n";
-            cout << "P2 = (" << p2.x << ", " << p2.y << ")\n";
-            cout << "P3 = (" << p3.x << ", " << p3.y << ")\n";
-            cout << "P4 = (" << p4.x << ", " << p4.y << ")\n";
             #ifdef PRINT_MARKERS
             print_markers();
             #endif
