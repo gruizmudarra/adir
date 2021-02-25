@@ -1,16 +1,19 @@
 <?xml version="1.0"?>
 <launch>
+<!-- ROS Nodes -->
     <node pkg= "adir"   type= "curvature_calc"      name= "curvature_calc"/>
     <node pkg= "adir"   type= "env_class"           name= "env_class"           output= "screen"/>
     <node pkg= "adir"   type= "roundabout_planner"  name= "roundabout_planner"  output= "screen"/>
     <node pkg= "adir"   type= "crossing_planner"  name= "crossing_planner"  output= "screen"/>
     <node pkg= "adir"   type= "car_controller"      name= "car_controller"      output= "screen"/>
 
+<!-- ROS Parameters for movement configuration -->
     <param name= "loop_rate"    type= "int"         value="50"/>
     <param name= "lookahead"    type= "double"      value="0.2"/>
     <param name= "move_speed"    type= "int"      value="70"/>
     <param name= "stop_speed"    type= "int"      value="0"/>
 
+<!-- Topics involved in this package -->
     <param name= "line_detection_topic"     type= "string"         value="/tracking_enable"/>
     <param name= "odom_topic"               type= "string"         value="/odom"/>
     <param name= "speed_topic"              type= "string"         value="/manual_control/speed"/>
@@ -21,6 +24,5 @@
     <param name= "reference_topic"          type= "string"         value="/adir/reference"/>
     <param name= "control_topic"            type= "string"         value="/adir/enable_control"/>
     <param name= "planning_markers_topic"   type= "string"         value="/adir/planning_markers"/>
-    
-    
+
 </launch>

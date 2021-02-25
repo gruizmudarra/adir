@@ -1,8 +1,9 @@
-# Autonomous Driving in Intersections and Roundabouts.
-## I'm still working on documenting this repository and the README.
-This is the code developed for my Bsc. thesis. 
+# Circulación autónoma en cruces y rotondas (Autonomous Driving in Intersections and Roundabouts).
+Este repositorio contiene el trabajo desarrollado durante mi Trabajo Fin de Grado titulado "Circulación autónoma de un coche a escala 1/10 en cruces y rotondas utilizando ROS y Gazebo".
 
-It consists in a ROS package that provides a local navigation feature to a 1/10th scale car on a urban circuit. 
+
+El objetivo es que el vehículo a escala se pueda mover dentro de los carriles 
+
 
 ## Getting Started
 
@@ -13,14 +14,7 @@ It consists in a ROS package that provides a local navigation feature to a 1/10t
 
 ### Installing
 
-## Running the tests
-
 ## Deployment
-
-## Built With
 
 ## Authors
 
-## License
-
-## Acknowledgments

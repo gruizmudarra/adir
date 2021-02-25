@@ -1,15 +1,31 @@
 /*
  Node: env_class 
- Author: German Ruiz Mudarra, May 2020
+ Author: German Ruiz Mudarra, UMA Garage Team.
+ Created: May 2020
+ Last modified: February 2021
 
- Description: Environment Classifier
+ Description: This node uses odometry information and the curvature of the lanes recorded by the front camera of the
+ car to classify the environment where it is located on the urban circuit. 
+ 
+ Odometry is compared with a topologic map where crossing/roundabout entries/exits are defined as nodes. 
+ If the car is near one of these nodes (euclidean distance), the classifier will activate the specific planning for
+ these scenarios. 
+ On the other hand, if the car is not near a node, it means its not going to face a intersection, so the lane follower
+ should be activated (if not yet).   
     
  Subscriptions:
- /curvature_calc/all (Information about curvature of the lanes)
- /odom (Global position of the car (not ground-truth))
+ /adir/curvature_calc/all (Information about curvature of the lanes)
+ /odom (Estimated global position of the car)
 
  Publications:
 
+
+Subscriptions:
+    /odom                   (nav_msgs::Odometry): Degree of the polynomials detected
+    /adir/curvature_calc    (std_msgs::Float32Multiarray): Vector with the maximum curvature of each lane
+
+Publications:
+    /adir/
  */
 #ifndef ENV_CLASS_H
 #define ENV_CLASS_H
