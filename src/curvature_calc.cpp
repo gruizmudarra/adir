@@ -10,14 +10,14 @@
     nh.param<string>("/curvature_topic", curvature_topic, "/adir/curvature_calc"); // Topic where curvature data is sent
     
     // Subscribe to polynomials degree topic
-    ros::Subscriber degrees_sub = nh.subscribe("/lane_model/deg", POLY_QUEUE_SIZE, callbackDegrees);
+    degrees_sub = nh.subscribe("/lane_model/deg", POLY_QUEUE_SIZE, callbackDegrees);
     // Subscribe to polynomials coefficients topics
-    ros::Subscriber coefLeft_sub = nh.subscribe("/lane_model/coef/Left", POLY_QUEUE_SIZE, callbackCoefLeft);
-    ros::Subscriber coefCenter_sub = nh.subscribe("/lane_model/coef/Center", POLY_QUEUE_SIZE, callbackCoefCenter);
-    ros::Subscriber coefRight_sub = nh.subscribe("/lane_model/coef/Right", POLY_QUEUE_SIZE, callbackCoefRight);
+    coefLeft_sub = nh.subscribe("/lane_model/coef/Left", POLY_QUEUE_SIZE, callbackCoefLeft);
+    coefCenter_sub = nh.subscribe("/lane_model/coef/Center", POLY_QUEUE_SIZE, callbackCoefCenter);
+    coefRight_sub = nh.subscribe("/lane_model/coef/Right", POLY_QUEUE_SIZE, callbackCoefRight);
     
     // Publish to curvature topic
-    ros::Publisher curvature_pub = nh.advertise<adir::curvature_t>(curvature_topic, CURV_QUEUE_SIZE);
+    curvature_pub = nh.advertise<adir::curvature_t>(curvature_topic, CURV_QUEUE_SIZE);
     #ifdef PLOT_CURVATURE_DATA
         left_pub = nh.advertise<std_msgs::Float32>(CURVATURE_TOPIC_LEFT, CURV_QUEUE_SIZE);
         center_pub = nh.advertise<std_msgs::Float32>(CURVATURE_TOPIC_CENTER, CURV_QUEUE_SIZE);
@@ -27,12 +27,10 @@
     // Frequency rate
     ros::Rate node_loop_rate(loop_rate);
     
+    // Main loop
     while (ros::ok()) {
         // Calculate curvature radius      
         curvatureCalculation();
-
-        // Publish curvature calculated
-        curvature_pub.publish(curvature_msg);
         
         // If specified, publish calculations for debugging
         #ifdef PLOT_CURVATURE_DATA
@@ -47,9 +45,7 @@
     return 0;
  }
 
-/*
-    Callback listening to coeff data of the left lane and storing it
-*/
+// Callback listening to coeff data of the left lane and storing it
 void callbackCoefLeft(const std_msgs::Float32MultiArray::ConstPtr& msg) {
     std::vector<float> temp_data;
     // Extract data to a temporary variable
@@ -77,9 +73,8 @@ void callbackCoefLeft(const std_msgs::Float32MultiArray::ConstPtr& msg) {
     ROS_INFO("Left Coef data saved");
 }
 
-/*
-    Callback listening to coeff data of the center lane and storing it
-*/
+
+// Callback listening to coeff data of the center lane and storing it
 void callbackCoefCenter(const std_msgs::Float32MultiArray::ConstPtr& msg) {
     std::vector<float> temp_data;
     // Extract data to a temporary variable
@@ -107,9 +102,8 @@ void callbackCoefCenter(const std_msgs::Float32MultiArray::ConstPtr& msg) {
     ROS_INFO("Center Coef data saved");
 }
 
-/*
-    Callback listening to coeff data of the right lane and storing it
-*/
+
+// Callback listening to coeff data of the right lane and storing it
 void callbackCoefRight(const std_msgs::Float32MultiArray::ConstPtr& msg) {
     // Extract data to a temporary variable
     std::vector<float> temp_data;
@@ -137,9 +131,8 @@ void callbackCoefRight(const std_msgs::Float32MultiArray::ConstPtr& msg) {
     ROS_INFO("Right Coef data saved");
 }
 
-/*
-    Callback listening to degree data of all lanes and storing it
-*/
+
+// Callback listening to degree data of all lanes and storing it
 void callbackDegrees(const std_msgs::Int32MultiArray::ConstPtr& msg) {
     // Extract data to a temporary variable
     std::vector<int> temp_data;
@@ -152,7 +145,8 @@ void callbackDegrees(const std_msgs::Int32MultiArray::ConstPtr& msg) {
     ROS_INFO("Degree data saved");
 }
 
-/*  Curvature radius is defined by
+/*  
+    Curvature radius is defined by
         R_c = ((1+(df/dx)²)^3/2)/|d²f/dx| 
     
     Second grade curvature radius is then: 
@@ -168,8 +162,7 @@ void curvatureCalculation() {
         #endif
     }
     else { // Left lane not detected
-        //ROS_INFO("Couldn't calculate Left Lane curvature");
-        curvature_msg.left = 1000;
+        curvature_msg.left = 1000; // inf
         #ifdef PLOT_CURVATURE_DATA
             left_msg.data = 1000;
         #endif
@@ -182,7 +175,7 @@ void curvatureCalculation() {
         #endif
     }
     else { // Center lane not detected
-        curvature_msg.center = 1000;
+        curvature_msg.center = 1000; // inf
         #ifdef PLOT_CURVATURE_DATA
             center_msg.data = 1000;
         #endif
@@ -195,9 +188,12 @@ void curvatureCalculation() {
         #endif
     }
     else { // Right lane not detected
-        curvature_msg.right = 1000; 
+        curvature_msg.right = 1000; // inf
         #ifdef PLOT_CURVATURE_DATA
             right_msg.data = 1000;
         #endif
     }
+
+    // Publish curvature calculated
+    curvature_pub.publish(curvature_msg);
 }

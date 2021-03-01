@@ -29,14 +29,15 @@ Publications:
     #include "ros/ros.h"
     #include "iostream"
     #include "math.h"
+    using namespace std;
 
     // Import ROS message libraries
     #include "std_msgs/Int32MultiArray.h"
     #include "std_msgs/Float32MultiArray.h"
     #include "std_msgs/Float32.h"
-    #include "adir/curvature_t.h"
 
-    using namespace std;
+    // Import ADIR custom message for curvature
+    #include "adir/curvature_t.h"
 
     // Message queueing parameters
     static const uint32_t POLY_QUEUE_SIZE = 1;
@@ -49,7 +50,7 @@ Publications:
         static const string CURVATURE_TOPIC_RIGHT = "/adir/curvature_calc/right";
     #endif
 
-    // This type define the polynomials parameters
+    // This struct define the polynomials parameters
     struct polynomial_t {
         double a;
         double b;
@@ -64,10 +65,6 @@ Publications:
     void callbackDegrees(const std_msgs::Int32MultiArray::ConstPtr& msg);
     void curvatureCalculation();
 
-    // Variables for ROS parameters
-    int loop_rate;
-    string curvature_topic;
-
     // Variables 
     #ifdef PLOT_CURVATURE_DATA
         ros::Publisher left_pub;
@@ -80,10 +77,15 @@ Publications:
         std_msgs::Float32 right_msg;
     #endif
 
-    // Custom ROS message to send curvature data
-    adir::curvature_t curvature_msg;
-
-    // Variables where incoming polynomial data is stored
+    // Variables for subscribing and storing polynomial data 
+    ros::Subscriber degrees_sub, coefLeft_sub, coefCenter_sub, coefRight_sub;
     polynomial_t LeftLane, CenterLane, RightLane;
 
+    // Variables for publishing curvature
+    adir::curvature_t curvature_msg;
+    ros::Publisher curvature_pub;
+
+    // Variables for ROS parameters
+    int loop_rate;
+    string curvature_topic;
 #endif
