@@ -8,17 +8,20 @@
  car to classify the environment where it is located on the urban circuit. 
  
  Odometry is compared with a topologic map where crossing/roundabout entries/exits are defined as nodes. 
- If the car is near one of these nodes (euclidean distance), the classifier will activate the specific planning for
+ If the car is near one of these nodes (euclidean distance), the classifier will activate the specific planning algorithm for
  these scenarios. 
  On the other hand, if the car is not near a node, it means its not going to face a intersection, so the lane follower
  should be activated (if not yet).   
     
  Subscriptions:
- /adir/curvature_calc (Information about curvature of the lanes)
- /odom (Estimated global position of the car)
+    /adir/curvature_calc    (std_msgs::Float32Multiarray): Information about curvature of the lanes
+    /odom                   (nav_msgs::Odometry): Estimated global position of the car
 
 Publications:
-    /adir/
+    /tracking_enable        (std_msgs::Bool): Activates or deactivates line_detection_fu steering
+    /manual_control/speed   (std_msgs::Int16): Used for giving speed commands to the car
+    /adir/environment       (std_msgs::String): Environment where the car is (only used for debugging)
+    /adir/enable_planning   (adir::enable_t): Enables intersection planners 
  */
 #ifndef ENV_CLASS_H
     #define ENV_CLASS_H
