@@ -11,7 +11,7 @@ position_t r0(0,-5.1), r1(0,0), r2(0,0), i1(0,0), i2(0,0), i3(0,0), i4(0,0);
 position_t p0(0,0), p1(0,0), p2(0,0), p3(0,0), p4(0,0), p5(0,0), p6(0,0), p7(0,0), p8(0,0), p9(0,0);
 
 #ifdef PRINT_MARKERS
-ros::Publisher marker_pub;
+    ros::Publisher marker_pub;
 #endif
 
 ros::Publisher speed_pub;
