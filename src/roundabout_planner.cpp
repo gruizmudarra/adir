@@ -1,27 +1,13 @@
 #include "roundabout_planner.h"
 
-position_t vehicle_pose(0,0);
+
 position_t reference(0,0);
-bool enable_roundabout_planner = false;
-int node_entry = 0;
-int node_exit = 0;
 maneuver_state_t maneuver_state = DEFINITION_STATE;
 double t = 0.1;
 position_t r0(0,-5.1), r1(0,0), r2(0,0), i1(0,0), i2(0,0), i3(0,0), i4(0,0);
 position_t p0(0,0), p1(0,0), p2(0,0), p3(0,0), p4(0,0), p5(0,0), p6(0,0), p7(0,0), p8(0,0), p9(0,0);
 
-#ifdef PRINT_MARKERS
-    ros::Publisher marker_pub;
-#endif
 
-ros::Publisher speed_pub;
-std_msgs::Int16 speed_msg;
-
-ros::Publisher reference_pub;
-adir::point2D reference_msg;
-
-ros::Publisher enable_control_pub;
-std_msgs::Bool enable_control_msg;
 
 int main(int argc, char **argv) {
     // Node info
@@ -40,11 +26,11 @@ int main(int argc, char **argv) {
     
     
     // Subscriptions
-    ros::Subscriber odom_sub = nh.subscribe(odometry_topic, ODOM_QUEUE_SIZE, callbackOdomData);
-    ros::Subscriber adir_sub = nh.subscribe(planning_topic, PLANNING_QUEUE_SIZE, callbackADIRData);
+    odom_sub = nh.subscribe(odometry_topic, ODOM_QUEUE_SIZE, callbackOdomData);
+    adir_sub = nh.subscribe(planning_topic, PLANNING_QUEUE_SIZE, callbackADIRData);
     // Publications
     #ifdef PRINT_MARKERS
-    marker_pub = nh.advertise<visualization_msgs::Marker>(planning_markers_topic, MARKERS_QUEUE_SIZE);
+        marker_pub = nh.advertise<visualization_msgs::Marker>(planning_markers_topic, MARKERS_QUEUE_SIZE);
     #endif
     reference_pub = nh.advertise<adir::point2D>(reference_topic,1000);
     enable_control_pub = nh.advertise<std_msgs::Bool>(control_topic, 1000);
