@@ -1,34 +1,18 @@
 #include "roundabout_planner.h"
 
-position_t vehicle_pose(0,0);
+
 position_t reference(0,0);
-bool enable_roundabout_planner = false;
-int node_entry = 0;
-int node_exit = 0;
 maneuver_state_t maneuver_state = DEFINITION_STATE;
 double t = 0.1;
 position_t r0(0,-5.1), r1(0,0), r2(0,0), i1(0,0), i2(0,0), i3(0,0), i4(0,0);
 position_t p0(0,0), p1(0,0), p2(0,0), p3(0,0), p4(0,0), p5(0,0), p6(0,0), p7(0,0), p8(0,0), p9(0,0);
-
-#ifdef PRINT_MARKERS
-    ros::Publisher marker_pub;
-#endif
-
-ros::Publisher speed_pub;
-std_msgs::Int16 speed_msg;
-
-ros::Publisher reference_pub;
-adir::point2D reference_msg;
-
-ros::Publisher enable_control_pub;
-std_msgs::Bool enable_control_msg;
 
 int main(int argc, char **argv) {
     // Node info
     ros::init(argc, argv, "roundabout_planner");
 	ros::NodeHandle nh;
     
-    // Parameters
+    // Get parameters
     nh.param<int>("/loop_rate", loop_rate, 50);
     nh.param<double>("/lookahead", lookahead, 0.01);
     nh.param<string>("/odom_topic", odometry_topic, "/odom");
@@ -38,13 +22,12 @@ int main(int argc, char **argv) {
     nh.param<string>("/control_topic", control_topic, "/adir/enable_control");
     nh.param<string>("/speed_topic", speed_topic, "/manual_control/speed");
     
-    
     // Subscriptions
-    ros::Subscriber odom_sub = nh.subscribe(odometry_topic, ODOM_QUEUE_SIZE, callbackOdomData);
-    ros::Subscriber adir_sub = nh.subscribe(planning_topic, PLANNING_QUEUE_SIZE, callbackADIRData);
+    odom_sub = nh.subscribe(odometry_topic, ODOM_QUEUE_SIZE, callbackOdomData);
+    adir_sub = nh.subscribe(planning_topic, PLANNING_QUEUE_SIZE, callbackADIRData);
     // Publications
     #ifdef PRINT_MARKERS
-    marker_pub = nh.advertise<visualization_msgs::Marker>(planning_markers_topic, MARKERS_QUEUE_SIZE);
+        marker_pub = nh.advertise<visualization_msgs::Marker>(planning_markers_topic, MARKERS_QUEUE_SIZE);
     #endif
     reference_pub = nh.advertise<adir::point2D>(reference_topic,1000);
     enable_control_pub = nh.advertise<std_msgs::Bool>(control_topic, 1000);
@@ -229,97 +212,97 @@ position_t getUnitVector(position_t p, position_t q) {
  }
 
 #ifdef PRINT_MARKERS
-void print_markers() {
-    // Restriction points configuration
-    visualization_msgs::Marker restriction_points_markers;
-    visualization_msgs::Marker control_points_markers;
-    restriction_points_markers.header.frame_id = control_points_markers.header.frame_id = "world";
-    restriction_points_markers.header.stamp = control_points_markers.header.stamp = ros::Time::now();
-    restriction_points_markers.ns = control_points_markers.ns = "points_markers";
-    restriction_points_markers.action = control_points_markers.action = visualization_msgs::Marker::ADD;
-    restriction_points_markers.pose.orientation.w = control_points_markers.pose.orientation.w = 1.0;
-    
-    restriction_points_markers.id = 0;
-    control_points_markers.id = 1;
+    void print_markers() {
+        // Restriction points configuration
+        visualization_msgs::Marker restriction_points_markers;
+        visualization_msgs::Marker control_points_markers;
+        restriction_points_markers.header.frame_id = control_points_markers.header.frame_id = "world";
+        restriction_points_markers.header.stamp = control_points_markers.header.stamp = ros::Time::now();
+        restriction_points_markers.ns = control_points_markers.ns = "points_markers";
+        restriction_points_markers.action = control_points_markers.action = visualization_msgs::Marker::ADD;
+        restriction_points_markers.pose.orientation.w = control_points_markers.pose.orientation.w = 1.0;
+        
+        restriction_points_markers.id = 0;
+        control_points_markers.id = 1;
 
-    restriction_points_markers.type = control_points_markers.type = visualization_msgs::Marker::POINTS;
+        restriction_points_markers.type = control_points_markers.type = visualization_msgs::Marker::POINTS;
 
-    // POINTS markers use x and y scale for width/height respectively
-    restriction_points_markers.scale.x = control_points_markers.scale.x = 0.05;
-    restriction_points_markers.scale.y = control_points_markers.scale.y = 0.05;
+        // POINTS markers use x and y scale for width/height respectively
+        restriction_points_markers.scale.x = control_points_markers.scale.x = 0.05;
+        restriction_points_markers.scale.y = control_points_markers.scale.y = 0.05;
 
-    geometry_msgs::Point p;
-    position_t restriction_points_vector[] = {r0, r1, r2, i1, i2, i3, i4};
-    for(int k = 0; k <= 6; k++) {
-        std_msgs::ColorRGBA c;
-        if (k < 3) {
-            c.r = 1.0;
+        geometry_msgs::Point p;
+        position_t restriction_points_vector[] = {r0, r1, r2, i1, i2, i3, i4};
+        for(int k = 0; k <= 6; k++) {
+            std_msgs::ColorRGBA c;
+            if (k < 3) {
+                c.r = 1.0;
+            }
+            else if (k >=3 && k<5) {
+                c.r = 1; c.g = 1;
+            }
+            else {
+                c.r = 1.0; c.g = 0.5;
+            }
+            c.a = 1.0;
+            p.x = restriction_points_vector[k].x;
+            p.y = restriction_points_vector[k].y;
+            p.z = 0.25;
+            restriction_points_markers.points.push_back(p);
+            restriction_points_markers.colors.push_back(c); 
         }
-        else if (k >=3 && k<5) {
-            c.r = 1; c.g = 1;
+
+        geometry_msgs::Point q;
+        position_t control_points_vector[] = {p0, p1, p2, p3, p4, p5, p6, p7, p8, p9};
+        for(int kk = 0; kk <= 9; kk++) {
+            std_msgs::ColorRGBA c;
+            switch(kk) {
+                case 0: c.g = 0.2; break;
+                case 1: c.g = 0.4; break;
+                case 2: c.g = 0.6; break;
+                case 3: c.g = 0.8; break;
+                case 4: c.g = 1.0; break;
+
+                case 5: c.b = 0.2; break;
+                case 6: c.b = 0.4; break;
+                case 7: c.b = 0.6; break;
+                case 8: c.b = 0.8; break;
+                case 9: c.b = 1.0; break;
+            }
+            c.a = 1.0;
+            q.x = control_points_vector[kk].x; q.y = control_points_vector[kk].y; q.z = 0.25;
+            control_points_markers.points.push_back(q);
+            control_points_markers.colors.push_back(c);
         }
-        else {
-            c.r = 1.0; c.g = 0.5;
-        }
-        c.a = 1.0;
-        p.x = restriction_points_vector[k].x;
-        p.y = restriction_points_vector[k].y;
-        p.z = 0.25;
-        restriction_points_markers.points.push_back(p);
-        restriction_points_markers.colors.push_back(c); 
+        marker_pub.publish(restriction_points_markers);
+        marker_pub.publish(control_points_markers);
     }
+    void print_reference(position_t point) {
+        // Restriction points configuration
+        visualization_msgs::Marker reference_points;
+        reference_points.header.frame_id = "world";
+        reference_points.header.stamp = ros::Time::now();
+        reference_points.ns = "reference_points";
+        reference_points.action = visualization_msgs::Marker::ADD;
+        reference_points.pose.orientation.w  = 1.0;
+        
+        reference_points.id = 2;
+        
+        reference_points.type = visualization_msgs::Marker::POINTS;
 
-    geometry_msgs::Point q;
-    position_t control_points_vector[] = {p0, p1, p2, p3, p4, p5, p6, p7, p8, p9};
-    for(int kk = 0; kk <= 9; kk++) {
-        std_msgs::ColorRGBA c;
-        switch(kk) {
-            case 0: c.g = 0.2; break;
-            case 1: c.g = 0.4; break;
-            case 2: c.g = 0.6; break;
-            case 3: c.g = 0.8; break;
-            case 4: c.g = 1.0; break;
+        // POINTS markers use x and y scale for width/height respectively
+        reference_points.scale.x = 0.05; reference_points.scale.y = 0.05;
 
-            case 5: c.b = 0.2; break;
-            case 6: c.b = 0.4; break;
-            case 7: c.b = 0.6; break;
-            case 8: c.b = 0.8; break;
-            case 9: c.b = 1.0; break;
-        }
-        c.a = 1.0;
-        q.x = control_points_vector[kk].x; q.y = control_points_vector[kk].y; q.z = 0.25;
-        control_points_markers.points.push_back(q);
-        control_points_markers.colors.push_back(c);
+        // Points are white
+        reference_points.color.r = 1.0; reference_points.color.g = 1.0; reference_points.color.b = 1.0f;
+        reference_points.color.a = 1.0;
+        
+        geometry_msgs::Point p;
+        p.x = point.x; p.y = point.y; p.z = 0.25;
+        reference_points.points.push_back(p);
+        
+        marker_pub.publish(reference_points);
     }
-    marker_pub.publish(restriction_points_markers);
-    marker_pub.publish(control_points_markers);
-}
-void print_reference(position_t point) {
-    // Restriction points configuration
-    visualization_msgs::Marker reference_points;
-    reference_points.header.frame_id = "world";
-    reference_points.header.stamp = ros::Time::now();
-    reference_points.ns = "reference_points";
-    reference_points.action = visualization_msgs::Marker::ADD;
-    reference_points.pose.orientation.w  = 1.0;
-    
-    reference_points.id = 2;
-    
-    reference_points.type = visualization_msgs::Marker::POINTS;
-
-    // POINTS markers use x and y scale for width/height respectively
-    reference_points.scale.x = 0.05; reference_points.scale.y = 0.05;
-
-    // Points are white
-    reference_points.color.r = 1.0; reference_points.color.g = 1.0; reference_points.color.b = 1.0f;
-    reference_points.color.a = 1.0;
-    
-    geometry_msgs::Point p;
-    p.x = point.x; p.y = point.y; p.z = 0.25;
-    reference_points.points.push_back(p);
-    
-    marker_pub.publish(reference_points);
-}
 #endif
 
 void publishReference(position_t r) {
@@ -340,7 +323,7 @@ void roundaboutReferenceGenerator() {
             selectRestrictionPoints();
             defineControlPoints();
             #ifdef PRINT_MARKERS
-            print_markers();
+                print_markers();
             #endif
             maneuver_state = ENTRY_STATE;
             cout << "Starting entrance... \n";
@@ -359,8 +342,8 @@ void roundaboutReferenceGenerator() {
             }
             else {
                 if (getDistance(vehicle_pose, reference) < lookahead) {
-                t+= 0.025;
-                // cout << "New reference generated. t = " << t << "\n";
+                    t+= 0.025;
+                    // cout << "New reference generated. t = " << t << "\n";
                 }
             }
             break;
