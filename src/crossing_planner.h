@@ -2,80 +2,100 @@
  Node: crossing_planner 
  Author: German Ruiz Mudarra, July 2020
 
- Description: Crossing environment path planning.
+ Description: This node receives a message anytime the car is facing an intersection. The message consist
+ in a activation parameter and the identifiers of the nodes from the topologic map that defines the desired
+ path. Based on that, the crossing_planner calculates the needed trayectory using Bezier curves (splines).
     
  Subscriptions:
+    /odom                   (nav_msgs::Odometry): Estimated global position of the car 
+    /adir/enable_planning   (adir::enable_t): Enables intersection planners
 
-
- Publications:
-
+Publications:
+    /manual_control/speed   (std_msgs::Int16): Used for giving speed commands to the car
+    /adir/enable_control    (std_msgs::Bool): Enable control node
+    /adir/reference         (adir::point2D): Reference point sent to control node
  */
+
 #ifndef CROSSING_PLANNER_H
-#define CROSSING_PLANNER_H
-#include "ros/ros.h"
+    #define CROSSING_PLANNER_H
+    #define PRINT_MARKERS // Macro for representing the trajectory in the simulator
 
-#include "iostream"
-using namespace std;
+    #include "ros/ros.h"
+    #include "math.h"
+    #include "iostream"
+    using namespace std;
 
-#include "math.h"
+    // Import ROS message libraries
+    #include "nav_msgs/Odometry.h"
+    #include "std_msgs/Int16.h"
+    #include "std_msgs/String.h"
+    #include "std_msgs/Bool.h"
+    #include "visualization_msgs/Marker.h"
+    #include "geometry_msgs/Point.h"
+    // Import ADIR custom messages
+    #include "adir/enable_t.h"
+    #include "adir/point2D.h"
 
-#include "nav_msgs/Odometry.h"
-#include "std_msgs/Int16.h"
-#include "std_msgs/String.h"
-#include "std_msgs/Bool.h"
-#include "visualization_msgs/Marker.h"
-#include "geometry_msgs/Point.h"
+    // Message queueing parameters
+    static const uint32_t ODOM_QUEUE_SIZE = 1;
+    static const uint32_t ENV_QUEUE_SIZE = 1;
+    static const uint32_t ENABLE_QUEUE_SIZE = 1;
+    static const uint32_t PLANNING_QUEUE_SIZE = 1;
+    static const uint32_t MARKERS_QUEUE_SIZE = 20;
 
-#include "adir/enable_t.h"
-#include "adir/point2D.h"
+    // Cartesian coordinates, this way points can be defined as P(x,y)
+    struct position_t {
+        double x;
+        double y;
+        // Constructor for easy mapping
+        position_t(double arg_x, double arg_y) : x(arg_x), y(arg_y) {}
+    };
 
-#define PRINT_MARKERS
+    // State machine that defines the movement 
+    enum maneuver_state_t {IDLE_STATE, DEFINITION_STATE, CIRCULATION_STATE};
 
-// Cartesian coordinates
-struct position_t {
-    double x;
-    double y;
-    // Constructor for easy mapping
-    position_t(double arg_x, double arg_y) : x(arg_x), y(arg_y) {}
-};
+    // Function promises
+    void callbackOdomData(const nav_msgs::Odometry::ConstPtr& msg);
+    void callbackADIRData(const adir::enable_t::ConstPtr& msg);
 
-enum maneuver_state_t {IDLE_STATE, DEFINITION_STATE, CIRCULATION_STATE};
+    double bezierLinearScalar(double a, double b, double t);
+    position_t bezierLinear(position_t P, position_t Q, double t);
+    position_t bezierQuartic(position_t P, position_t Q, position_t R, position_t S, position_t U, double t);
+    position_t circunference(position_t P, position_t c, double r, double t);
+    double getDistance(position_t p, position_t q);
+    position_t getVector(position_t p, position_t q);
+    position_t getUnitVector(position_t p, position_t q);
+    void selectRestrictionPoints();
+    void defineControlPoints();
+    void printMarkers();
+    void printReference(position_t point);
+    void publishReference(position_t r);
+    void crossingReferenceGenerator();
 
-// Subscription callbacks
-void callbackOdomData(const nav_msgs::Odometry::ConstPtr& msg);
-void callbackADIRData(const adir::enable_t::ConstPtr& msg);
+    //Variables for subscribing to odometry and enable information
+    ros::Subscriber odom_sub, adir_sub;
+    position_t vehicle_pose(0,0);
+    bool enable_crossing_planner = false;
+    int node_entry = 0;
+    int node_exit = 0;
 
-// Bezier curves calculation
-double bezierLinearScalar(double a, double b, double t);
-position_t bezierLinear(position_t P, position_t Q, double t);
-position_t bezierQuartic(position_t P, position_t Q, position_t R, position_t S, position_t U, double t);
-position_t circunference(position_t P, position_t c, double r, double t);
-// 
-double getDistance(position_t p, position_t q);
-position_t getVector(position_t p, position_t q);
-position_t getUnitVector(position_t p, position_t q);
+    #ifdef PRINT_MARKERS
+        ros::Publisher marker_pub;
+    #endif
 
-void selectRestrictionPoints();
-void defineControlPoints();
-void printMarkers();
-void printReference(position_t point);
-void publishReference(position_t r);
-void crossingReferenceGenerator();
+    // Variables for publishing reference points, activation of the control and speed commands
+    ros::Publisher speed_pub,reference_pub,enable_control_pub;
+    std_msgs::Int16 speed_msg;
+    adir::point2D reference_msg;
+    std_msgs::Bool enable_control_msg;
 
-int loop_rate;
-double lookahead;
-
-string odometry_topic;
-string planning_topic;
-
-string reference_topic;
-string planning_markers_topic;
-string control_topic;
-string speed_topic;
-
-static const uint32_t ODOM_QUEUE_SIZE = 1;
-static const uint32_t ENV_QUEUE_SIZE = 1;
-static const uint32_t ENABLE_QUEUE_SIZE = 1;
-static const uint32_t PLANNING_QUEUE_SIZE = 1;
-static const uint32_t MARKERS_QUEUE_SIZE = 20;
+    // Variables for ROS parameters
+    int loop_rate;
+    double lookahead;
+    string odometry_topic;
+    string planning_topic;
+    string reference_topic;
+    string planning_markers_topic;
+    string control_topic;
+    string speed_topic;
 #endif

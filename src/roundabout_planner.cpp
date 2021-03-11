@@ -1,18 +1,19 @@
 #include "roundabout_planner.h"
 
+// Global variables
+maneuver_state_t maneuver_state = DEFINITION_STATE; // In which state is the car? Defining, entrying, circulating inside or exiting?
 
-position_t reference(0,0);
-maneuver_state_t maneuver_state = DEFINITION_STATE;
-double t = 0.1;
-position_t r0(0,-5.1), r1(0,0), r2(0,0), i1(0,0), i2(0,0), i3(0,0), i4(0,0);
-position_t p0(0,0), p1(0,0), p2(0,0), p3(0,0), p4(0,0), p5(0,0), p6(0,0), p7(0,0), p8(0,0), p9(0,0);
+position_t r0(0,-5.1), r1(0,0), r2(0,0), i1(0,0), i2(0,0), i3(0,0), i4(0,0); // Restriction points
+position_t p0(0,0), p1(0,0), p2(0,0), p3(0,0), p4(0,0), p5(0,0), p6(0,0), p7(0,0), p8(0,0), p9(0,0); // Control points
+double t = 0.1; // Increment parameter
+position_t reference(0,0); // Reference point sent to the P controller
 
 int main(int argc, char **argv) {
     // Node info
     ros::init(argc, argv, "roundabout_planner");
 	ros::NodeHandle nh;
     
-    // Get parameters
+    // Parameters
     nh.param<int>("/loop_rate", loop_rate, 50);
     nh.param<double>("/lookahead", lookahead, 0.01);
     nh.param<string>("/odom_topic", odometry_topic, "/odom");
@@ -25,19 +26,22 @@ int main(int argc, char **argv) {
     // Subscriptions
     odom_sub = nh.subscribe(odometry_topic, ODOM_QUEUE_SIZE, callbackOdomData);
     adir_sub = nh.subscribe(planning_topic, PLANNING_QUEUE_SIZE, callbackADIRData);
+    
     // Publications
-    #ifdef PRINT_MARKERS
-        marker_pub = nh.advertise<visualization_msgs::Marker>(planning_markers_topic, MARKERS_QUEUE_SIZE);
-    #endif
     reference_pub = nh.advertise<adir::point2D>(reference_topic,1000);
     enable_control_pub = nh.advertise<std_msgs::Bool>(control_topic, 1000);
     speed_pub = nh.advertise<std_msgs::Int16>(speed_topic, 1000);
     
-    // Loop rate
+    #ifdef PRINT_MARKERS
+        marker_pub = nh.advertise<visualization_msgs::Marker>(planning_markers_topic, MARKERS_QUEUE_SIZE);
+    #endif
+
+    // Frequency rate
     ros::Rate node_loop_rate(loop_rate);
 
+    // Main loop
     while (ros::ok()) {
-        if (enable_roundabout_planner) {
+        if (enable_roundabout_planner) { // If environment_class enables this node, let's start the state machine
             roundaboutReferenceGenerator();
         }
         ros::spinOnce();
@@ -46,20 +50,24 @@ int main(int argc, char **argv) {
     return 0;
 }
 
- void callbackOdomData(const nav_msgs::Odometry::ConstPtr& msg) {
+// Callback listening to the position of the car
+void callbackOdomData(const nav_msgs::Odometry::ConstPtr& msg) {
      vehicle_pose = position_t(msg -> pose.pose.position.x, msg -> pose.pose.position.y);
- }
+}
 
+// Callback listening to activation message from the environment classifier
 void callbackADIRData(const adir::enable_t::ConstPtr& msg) {
     enable_roundabout_planner = msg -> roundabout;
     node_entry = msg -> node_entry;
     node_exit = msg -> node_exit;
 }
 
+// Linear aproximation between two scalars using Bezier equation
 double bezierLinearScalar(double a, double b, double t) {
     return a + ((b-a)*t);
 }
 
+// Linear aproximation between two points using Bezier equation between scalars
 position_t bezierLinear(position_t P, position_t Q, double t) {
     position_t R(0,0);
     R.x = bezierLinearScalar(P.x,Q.x,t);
@@ -67,7 +75,7 @@ position_t bezierLinear(position_t P, position_t Q, double t) {
     return R;
 }
 
-// Evaluates the Bezier curve for a value of t using De Casteljau’s algorithm. Easier to see graphically.
+// Fourth grade aproximation between five points using De Casteljau’s algorithm. Easier to see graphically.
 // I consulted the time used in this algorithm compared to calculate the value using the equation directly, 
 // which resulted in the algorithm being 5x faster.
 position_t bezierQuartic(position_t P, position_t Q, position_t R, position_t S, position_t U, double t) {
@@ -88,21 +96,25 @@ position_t bezierQuartic(position_t P, position_t Q, position_t R, position_t S,
     return pf;    
 }
 
+// 
 position_t circunference(position_t P, position_t c, double r, double t) {
     double phi = atan2(P.y - c.y, P.x - c.x);
     position_t Q(c.x + r*cos(phi+t), c.y + r*sin(phi+t));
     return Q;
 }
 
- double getDistance(position_t p, position_t q) {
+// Euclidean distance between two points
+double getDistance(position_t p, position_t q) {
      return sqrt((q.x - p.x)*(q.x - p.x)+(q.y - p.y)*(q.y - p.y));
- }
+}
 
- position_t getVector(position_t p, position_t q) {
+// Vector between two points
+position_t getVector(position_t p, position_t q) {
      position_t pq(q.x - p.x, q.y - p.y);
     return pq;
- }
+}
 
+// Unit vector between two points
 position_t getUnitVector(position_t p, position_t q) {
      position_t pq = getVector(p,q);
      double dist = getDistance(p,q);
@@ -111,11 +123,10 @@ position_t getUnitVector(position_t p, position_t q) {
         pq_unit = position_t(pq.x/dist, pq.y/dist);
      }
      return pq_unit;
- }
+}
 
-
- void selectRestrictionPoints() {
-     // Choose geometric points of the roundabout depending on the entry/exit
+// Choose restriction points of the roundabout depending on the entry/exit
+void selectRestrictionPoints() {
     r1 = vehicle_pose;
     switch(node_entry){
         case 1: 
@@ -165,38 +176,39 @@ position_t getUnitVector(position_t p, position_t q) {
             break;
     }
     cout << "Restriction points of the exit created. \n";
- }
+}
 
-
- void defineControlPoints() {
+// Calculate control points that will define the trajectory
+void defineControlPoints() {
     cout << "Defining control points. \n";    
     // Entry control points
-    // p0 = r0 + l0*getUnitVector(r0,r1)
+    // Start point, p0 = r0 + l0*getUnitVector(r0,r1)
     double l0 = getDistance(r0, r1);
-    p0 = position_t(r0.x + l0*getUnitVector(r0,r1).x,r0.y + l0*getUnitVector(r0,r1).y);
-    
-    // p1 = r0 + l1*getUnitVector(r0,r1)
+    p0 = position_t(r0.x + l0*getUnitVector(r0,r1).x, r0.y + l0*getUnitVector(r0,r1).y);
+    // Aproaching, p1 = r0 + l1*getUnitVector(r0,r1)
     double l1 = 0.85*l0;
-    p1 = position_t(r0.x + l1*getUnitVector(r0,r1).x,r0.y + l1*getUnitVector(r0,r1).y);
-    // p2 = i1 + l2*getUnitVector(i2,i1)
+    p1 = position_t(r0.x + l1*getUnitVector(r0,r1).x, r0.y + l1*getUnitVector(r0,r1).y);
+    // Thanks to this point the car doesnt walk out of the road when turning, p2 = i1 + l2*getUnitVector(i2,i1)
     double l2 =0.2;
-    p2 = position_t(i1.x + l2*getUnitVector(i2,i1).x,i1.y + l2*getUnitVector(i2,i1).y);
-    // p4 is calculated from the arc of the circunference l4 that separates vectors r0r1 and r0p4
+    p2 = position_t(i1.x + l2*getUnitVector(i2,i1).x, i1.y + l2*getUnitVector(i2,i1).y);
+    // Last point of the entry, p4 is calculated from the arc of the circunference l4 that separates vectors r0r1 and r0p4
     double l4 = 0.5;
     double phi_entry = l4/TRANSIT_RADIUS;
-    p4 = position_t(TRANSIT_RADIUS*cos(atan2(r1.y-r0.y,r1.x-r0.x)+phi_entry)+r0.x, TRANSIT_RADIUS*sin(atan2(r1.y-r0.y,r1.x-r0.x)+phi_entry)+r0.y);
-    // p3 = p4+l3*T. T is the tangent vector to the transit circunference p4
+    p4 = position_t(TRANSIT_RADIUS*cos(atan2(r1.y-r0.y,r1.x-r0.x)+phi_entry)+r0.x, 
+                    TRANSIT_RADIUS*sin(atan2(r1.y-r0.y,r1.x-r0.x)+phi_entry)+r0.y);
+    // Incorporation into the roundabout, p3 = p4+l3*T. T is the tangent vector to the transit circunference p4
     position_t normal_entry = getUnitVector(p4,r0);
     position_t tangent_entry(normal_entry.y, -1*normal_entry.x); 
     double l3 = 0.2;
     p3 = position_t(p4.x + l3*tangent_entry.x, p4.y + l3*tangent_entry.y);
+    
     // Exit control points (simetric to the entry calculation)
     // p4 is calculated from the arc of the circunference l5 that separates vectors r0r2 and r0p5
     double l5 = l4;
     double phi_exit = l5/TRANSIT_RADIUS;
-    p5 = position_t(TRANSIT_RADIUS*cos(atan2(r2.y-r0.y,r2.x-r0.x)-phi_exit)+r0.x,TRANSIT_RADIUS*sin(atan2(r2.y-r0.y,r2.x-r0.x)-phi_exit)+r0.y);
+    p5 = position_t(TRANSIT_RADIUS*cos(atan2(r2.y-r0.y,r2.x-r0.x)-phi_exit)+r0.x, TRANSIT_RADIUS*sin(atan2(r2.y-r0.y,r2.x-r0.x)-phi_exit)+r0.y);
     // p6 = p5+l6*T. T is the tangent vector to the transit circunference p5
-    position_t normal_exit = getUnitVector(p5,r0);
+    position_t normal_exit = getUnitVector(p5, r0);
     position_t tangent_exit(normal_exit.y, -1*normal_exit.x); 
     double l6 = l3;
     p6 = position_t(p5.x + l6*tangent_exit.x, p5.y + l6*tangent_exit.y);
@@ -209,7 +221,7 @@ position_t getUnitVector(position_t p, position_t q) {
     // p9 = r0 + l9*getUnitVector(r0,r2)
     double l8 = 0.85*l9;
     p8 = position_t(r0.x + l8*getUnitVector(r0,r2).x, r0.y + l8*getUnitVector(r0,r2).y);    
- }
+}
 
 #ifdef PRINT_MARKERS
     void print_markers() {
@@ -307,7 +319,7 @@ position_t getUnitVector(position_t p, position_t q) {
 
 void publishReference(position_t r) {
     #ifdef PRINT_MARKERS 
-    print_reference(r);
+        print_reference(r);
     #endif
     reference_msg.x = r.x;
     reference_msg.y = r.y;
@@ -315,36 +327,33 @@ void publishReference(position_t r) {
 }
 
 void roundaboutReferenceGenerator() {
-    float dist_ref = 0;
-    float dist_control = 0;
     switch (maneuver_state) {
         case DEFINITION_STATE:
             cout << "Roundabout planner initialized. \n";
             selectRestrictionPoints();
             defineControlPoints();
             #ifdef PRINT_MARKERS
-                print_markers();
+                print_markers(); // Print markers in the simulator
             #endif
-            maneuver_state = ENTRY_STATE;
-            cout << "Starting entrance... \n";
+            maneuver_state = ENTRY_STATE; // Go to next state
             enable_control_msg.data = true;
-            enable_control_pub.publish(enable_control_msg);
-            speed_msg.data = 50;
+            enable_control_pub.publish(enable_control_msg); // Enable control node
+            speed_msg.data = 50; // Start moving
             speed_pub.publish(speed_msg);
+            cout << "Starting entrance... \n";
+
         break;
         case ENTRY_STATE:
-            reference = bezierQuartic(p0,p1,p2,p3,p4,t);
+            reference = bezierQuartic(p0,p1,p2,p3,p4,t); // Calculate reference using entry control points and t parameter
             publishReference(reference);
-            if(getDistance(vehicle_pose,p4) < lookahead || t > 1) {
-                t = 0;
-                maneuver_state = CIRCULATION_STATE;
-                cout << "Circulating inside the roundabout...\n";
+            if (getDistance(vehicle_pose, reference) < lookahead) { // If reference is reached, increment t to generate another one.
+                t+= 0.025;
+                // cout << "New reference generated. t = " << t << "\n";
             }
-            else {
-                if (getDistance(vehicle_pose, reference) < lookahead) {
-                    t+= 0.025;
-                    // cout << "New reference generated. t = " << t << "\n";
-                }
+            if(getDistance(vehicle_pose,p4) < lookahead || t > 1) { // If entry is done
+                t = 0.1; 
+                maneuver_state = CIRCULATION_STATE; // Go to next state
+                cout << "Circulating inside the roundabout...\n";
             }
             break;
         case CIRCULATION_STATE:
@@ -374,9 +383,9 @@ void roundaboutReferenceGenerator() {
             break;
         case IDLE_STATE:
                 cout << "Maneuver finished.\n";
-                maneuver_state = DEFINITION_STATE;
-                enable_roundabout_planner = false;
-                enable_control_msg.data = false;
+                maneuver_state = DEFINITION_STATE; // Reset state machine
+                enable_roundabout_planner = false; // Auto-disable planner
+                enable_control_msg.data = false;   // Disable control
                 enable_control_pub.publish(enable_control_msg);
                 cout << "Roundabout planner disabled.\n";
             break;

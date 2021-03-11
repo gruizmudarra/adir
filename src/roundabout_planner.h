@@ -14,8 +14,8 @@
 
 Publications:
     /manual_control/speed   (std_msgs::Int16): Used for giving speed commands to the car
-    /adir/reference         (adir::point2D): 
-    /adir/enable_control    (std_msgs::Bool):
+    /adir/enable_control    (std_msgs::Bool): Enable control node
+    /adir/reference         (adir::point2D): Reference point sent to control node
  */
 #ifndef ROUNDABOUT_PLANNER_H
     #define ROUNDABOUT_PLANNER_H
