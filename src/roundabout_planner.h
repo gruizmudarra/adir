@@ -9,8 +9,13 @@
  path. Based on that, the roundabout_planner calculates the needed trayectory using Bezier curves (splines).
     
  Subscriptions:
+<<<<<<< HEAD
     /odom                   (nav_msgs::Odometry): Estimated global position of the car 
     /adir/enable_planning   (adir::enable_t): Enables intersection planners
+=======
+    /adir/enable_planning   (adir::enable_t): Enables intersection planners     
+    /odom                   (nav_msgs::Odometry): Estimated global position of the car
+>>>>>>> c93b4b0bf13cd7ab56cd81024d801c99d2e04b3c
 
 Publications:
     /manual_control/speed   (std_msgs::Int16): Used for giving speed commands to the car
@@ -51,6 +56,7 @@ Publications:
         // Constructor for easy mapping
         position_t(double arg_x, double arg_y) : x(arg_x), y(arg_y) {}
     };
+<<<<<<< HEAD
 
     // State machine that defines the movement 
     enum maneuver_state_t {IDLE_STATE, DEFINITION_STATE, ENTRY_STATE, CIRCULATION_STATE, EXIT_STATE};
@@ -62,15 +68,29 @@ Publications:
     void callbackOdomData(const nav_msgs::Odometry::ConstPtr& msg);
     void callbackADIRData(const adir::enable_t::ConstPtr& msg);
 
+=======
+    
+    // 
+    enum maneuver_state_t {IDLE_STATE, DEFINITION_STATE, ENTRY_STATE, CIRCULATION_STATE, EXIT_STATE};
+
+    //
+    static const double TRANSIT_RADIUS = 1.6; // Distance between road and center of the roundabout
+
+    // Function promises
+    void callbackOdomData(const nav_msgs::Odometry::ConstPtr& msg);
+    void callbackADIRData(const adir::enable_t::ConstPtr& msg);
+>>>>>>> c93b4b0bf13cd7ab56cd81024d801c99d2e04b3c
     double bezierLinearScalar(double a, double b, double t);
     position_t bezierLinear(position_t P, position_t Q, double t);
     position_t bezierQuartic(position_t P, position_t Q, position_t R, position_t S, position_t U, double t);
     position_t circunference(position_t P, position_t c, double r, double t);
+<<<<<<< HEAD
 
+=======
+>>>>>>> c93b4b0bf13cd7ab56cd81024d801c99d2e04b3c
     double getDistance(position_t p, position_t q);
     position_t getVector(position_t p, position_t q);
     position_t getUnitVector(position_t p, position_t q);
-
     void selectRestrictionPoints();
     void defineControlPoints();
     void printMarkers();
@@ -78,6 +98,7 @@ Publications:
     void publishReference(position_t r);
     void roundaboutReferenceGenerator();
 
+<<<<<<< HEAD
     //Variables for subscribing to odometry and enable information
     ros::Subscriber odom_sub, adir_sub;
     position_t vehicle_pose(0,0);
@@ -87,16 +108,31 @@ Publications:
 
     // Variables for publishing reference points, activation of the control and speed commands
     ros::Publisher speed_pub,reference_pub,enable_control_pub;
+=======
+    // 
+    ros::Publisher speed_pub, reference_pub, enable_control_pub;
+>>>>>>> c93b4b0bf13cd7ab56cd81024d801c99d2e04b3c
     std_msgs::Int16 speed_msg;
     adir::point2D reference_msg;
     std_msgs::Bool enable_control_msg;
 
+<<<<<<< HEAD
     // Variable for the publisher in charge of the markers for representation, msg variables
     // in the function that publishes them
+=======
+>>>>>>> c93b4b0bf13cd7ab56cd81024d801c99d2e04b3c
     #ifdef PRINT_MARKERS
         ros::Publisher marker_pub;
     #endif
 
+<<<<<<< HEAD
+=======
+    ros::Subscriber odom_sub, adir_sub;
+    position_t vehicle_pose(0,0);
+    bool enable_roundabout_planner = false;
+    int node_entry = 0;
+    int node_exit = 0;
+>>>>>>> c93b4b0bf13cd7ab56cd81024d801c99d2e04b3c
     // Variables for ROS parameters
     int loop_rate;
     double lookahead;
@@ -106,4 +142,8 @@ Publications:
     string planning_markers_topic;
     string control_topic;
     string speed_topic;
+<<<<<<< HEAD
+=======
+    
+>>>>>>> c93b4b0bf13cd7ab56cd81024d801c99d2e04b3c
 #endif
